@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmfura - 4x4 Carrier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .pulse-blue { animation: pulse-blue 1.5s infinite; }
+        @keyframes pulse-blue {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-wrapper" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-sm">
+            <div class="text-center mb-6">
+                <h1 class="text-4xl font-bold text-green-700 italic">🌱 Farmfura</h1>
+                <p class="mt-2 text-lg text-gray-600">4x4 Carrier Portal</p>
+            </div>
+            <div class="bg-white p-8 rounded-lg shadow-md">
+                <input type="tel" id="login-phone" class="w-full p-3 border rounded-md mb-4" placeholder="10-digit phone number" value="9000000003">
+                <input type="password" id="login-password" class="w-full p-3 border rounded-md mb-4" placeholder="Password" value="password123">
+                <button id="login-btn" class="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">Login</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="app-wrapper" class="hidden">
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div id="app-header-content" class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-4">
+                </div>
+        </header>
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div id="carrier-dashboard-page" class="page active">
+                </div>
+        </main>
+    </div>
+    
+    <div id="toast-message" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white bg-blue-600 transition-transform duration-300 translate-x-[120%] z-[150]"></div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE & SOUNDS ---
+    let currentUser = null;
+    const notificationSound = new Tone.Synth({ oscillator: { type: 'square' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.2, release: 0.2 } }).toDestination();
+
+    // --- DOM ELEMENTS ---
+    const loginWrapper = document.getElementById('login-wrapper');
+    const appWrapper = document.getElementById('app-wrapper');
+    const toastMessage = document.getElementById('toast-message');
+    const getElement = (id) => document.getElementById(id);
+
+    // --- UTILITY ---
+    const showToast = (message) => {
+        toastMessage.textContent = message;
+        toastMessage.classList.remove('translate-x-[120%]');
+        setTimeout(() => toastMessage.classList.add('translate-x-[120%]'), 4000);
+    };
+
+    // --- RENDER FUNCTIONS ---
+    function renderDashboard() {
+        const page = getElement('carrier-dashboard-page');
+        const allJobs = JSON.parse(localStorage.getItem('agrifura_logistics_jobs')) || [];
+        const myJobs = allJobs.filter(job => job.carrier && job.carrier.id === currentUser.id);
+
+        const newJob = myJobs.find(job => job.status === 'assigned');
+        const ongoingJob = myJobs.find(job => job.status === 'in_transit_pickup');
+
+        page.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">New Assigned Job</h2>
+                    <div id="new-job-container">
+                        ${newJob ? renderNewJob(newJob) : '<div class="bg-white p-8 rounded-lg shadow text-center text-gray-500">No new jobs assigned.</div>'}
+                    </div>
+                </div>
+
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">My Current Job</h2>
+                    <div id="ongoing-job-container">
+                        ${ongoingJob ? renderOngoingJob(ongoingJob) : '<div class="bg-white p-8 rounded-lg shadow text-center text-gray-500">You have no ongoing jobs.</div>'}
+                    </div>
+                </div>
+            </div>
+        `;
+        attachActionListeners();
+    }
+
+    function renderNewJob(job) {
+        // Find farmer details from the original submission
+        const submissions = JSON.parse(localStorage.getItem('farmfura_farmer_submissions')) || [];
+        const submission = submissions.find(s => s.id === job.id);
+        const farmerName = submission ? submission.farmerName : 'Unknown Farmer';
+
+        return `
+            <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
+                <p class="font-bold text-xl">Job ID: ${job.id}</p>
+                <p class="text-gray-600 mt-2"><strong>Type:</strong> Pickup from Farmer</p>
+                <p class="text-gray-600"><strong>From:</strong> ${farmerName}</p>
+                <button class="action-btn mt-4 w-full bg-blue-600 text-white font-bold py-3 rounded-md pulse-blue" data-action="accept" data-job-id="${job.id}">Accept Job</button>
+            </div>
+        `;
+    }
+
+    function renderOngoingJob(job) {
+         const submissions = JSON.parse(localStorage.getItem('farmfura_farmer_submissions')) || [];
+         const submission = submissions.find(s => s.id === job.id);
+         const farmerName = submission ? submission.farmerName : 'Unknown Farmer';
+         const canNavigate = job.location && job.location.lat;
+
+        return `
+            <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-green-500">
+                <p class="font-bold text-xl">Job ID: ${job.id}</p>
+                <p class="text-gray-600 mt-2"><strong>Status:</strong> <span class="font-semibold capitalize text-green-700">${job.status.replace(/_/g, ' ')}</span></p>
+                <p class="text-gray-600"><strong>Task:</strong> Pick up from ${farmerName}</p>
+                <div class="mt-4 grid grid-cols-1 gap-3">
+                    <a href="${canNavigate ? `https://maps.google.com/?q=$${job.location.lat},${job.location.lon}` : '#'}" ${canNavigate ? 'target="_blank"' : 'disabled'} class="block w-full text-center bg-blue-600 text-white font-bold py-3 rounded-md ${!canNavigate ? 'bg-gray-400 cursor-not-allowed' : 'hover:bg-blue-700'}">📍 Navigate to Farm</a>
+                    <button class="action-btn w-full bg-green-600 text-white font-bold py-3 rounded-md" data-action="deliver" data-job-id="${job.id}">Mark as Delivered to Grid</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // --- LOGIC ---
+    function finalLogin(user) {
+        currentUser = user;
+        sessionStorage.setItem('4x4CarrierUser', JSON.stringify(user));
+        loginWrapper.style.display = 'none';
+        appWrapper.style.display = 'block';
+        
+        getElement('app-header-content').innerHTML = `
+            <div>
+                <div class="text-3xl font-bold text-green-700 italic">🌱 4x4 Carrier</div>
+                <span class="text-sm text-gray-600 block">Welcome, ${currentUser.name} (${currentUser.vehicleNumber})</span>
+            </div>
+            <a href="#" id="logout-button" class="font-semibold text-red-600 hover:text-red-800">Logout</a>`;
+        getElement('logout-button').addEventListener('click', () => {
+            sessionStorage.removeItem('4x4CarrierUser');
+            window.location.reload();
+        });
+        renderDashboard();
+    }
+    
+    function attachActionListeners() {
+        document.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', handleJobAction));
+    }
+
+    function handleJobAction(e) {
+        const action = e.target.dataset.action;
+        const jobId = e.target.dataset.jobId;
+        let jobs = JSON.parse(localStorage.getItem('agrifura_logistics_jobs')) || [];
+        const jobIndex = jobs.findIndex(j => j.id === jobId);
+
+        if (jobIndex === -1) {
+            showToast("Job is no longer available.");
+            renderDashboard();
+            return;
+        }
+
+        let job = jobs[jobIndex];
+
+        if (action === 'accept') {
+            if (jobs.some(j => j.carrier.id === currentUser.id && j.status === 'in_transit_pickup')) {
+                showToast("You must complete your current job first.");
+                return;
+            }
+            job.status = 'in_transit_pickup';
+        } else if (action === 'deliver') {
+            job.status = 'Delivered to Grid'; 
+            // The Supply Grid Manager will mark it as "Received" to finalize
+            showToast(`Job ${job.id} marked as delivered. Awaiting confirmation from Supply Grid.`);
+        }
+        
+        jobs[jobIndex] = job;
+        localStorage.setItem('agrifura_logistics_jobs', JSON.stringify(jobs));
+        renderDashboard();
+    }
+
+    // --- REAL-TIME LISTENER ---
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'agrifura_logistics_jobs' && currentUser) {
+            const newJobs = JSON.parse(event.newValue || '[]');
+            const oldJobs = JSON.parse(event.oldValue || '[]');
+            const newJobForMe = newJobs.find(j => j.carrier.id === currentUser.id && j.status === 'assigned');
+            const wasAlreadyAssigned = oldJobs.some(j => j.carrier.id === currentUser.id && j.id === newJobForMe?.id);
+
+            if (newJobForMe && !wasAlreadyAssigned) {
+                showToast("🔔 New Job Assigned!");
+                notificationSound.triggerAttackRelease("D4", "0.5");
+            }
+            renderDashboard();
+        }
+    });
+
+    // --- LOGIN & INIT ---
+    const handleLogin = () => {
+        const phone = document.getElementById('login-phone').value;
+        const password = document.getElementById('login-password').value;
+        const employees = JSON.parse(localStorage.getItem('farmfura_employees')) || [];
+        const user = employees.find(e => e.phone === phone && e.password === password && e.role === '4x4_carrier');
+
+        if (user && user.status === 'Active') {
+            finalLogin(user);
+        } else {
+            showToast('Invalid credentials or inactive account.');
+        }
+    };
+    
+    const init = () => {
+        const savedUser = sessionStorage.getItem('4x4CarrierUser');
+        if (savedUser) {
+            finalLogin(JSON.parse(savedUser));
+        } else {
+            document.getElementById('login-btn').addEventListener('click', handleLogin);
+        }
+    };
+    init();
+});
+</script>
+</body>
+</html>
