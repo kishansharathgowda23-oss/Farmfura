@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmfura - Bike Carrier</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .pulse-green { animation: pulse-green 1.5s infinite; }
+        @keyframes pulse-green {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(22, 163, 74, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-wrapper" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-sm">
+            <div class="text-center mb-6">
+                <h1 class="text-4xl font-bold text-green-700 italic">🌱 Farmfura</h1>
+                <p class="mt-2 text-lg text-gray-600">Bike Carrier Portal</p>
+            </div>
+            <div id="login-container" class="bg-white p-8 rounded-lg shadow-md">
+                <!-- Login steps rendered by JS -->
+            </div>
+        </div>
+    </div>
+    
+    <div id="app-wrapper" class="hidden">
+        <header class="bg-white shadow-sm sticky top-0 z-50">
+            <div id="app-header-content" class="container mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center py-4">
+                <!-- Header rendered by JS -->
+            </div>
+        </header>
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div id="carrier-dashboard-page" class="page active">
+                <!-- Dashboard rendered by JS -->
+            </div>
+        </main>
+    </div>
+    
+    <div id="toast-message" class="fixed bottom-4 right-4 p-4 rounded-lg shadow-xl text-white bg-blue-600 transition-transform duration-300 translate-x-[120%] z-[150]"></div>
+
+<script src="data-init.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    let currentUser = null;
+    const notificationSound = new Tone.Synth({ oscillator: { type: 'triangle' }, envelope: { attack: 0.01, decay: 0.2, sustain: 0.1, release: 0.5 } }).toDestination();
+
+    const getElement = (id) => document.getElementById(id);
+    const showToast = (message) => {
+        const toast = getElement('toast-message');
+        toast.textContent = message;
+        toast.classList.remove('translate-x-[120%]');
+        setTimeout(() => toast.classList.add('translate-x-[120%]'), 4000);
+    };
+
+    function renderDashboard() {
+        const page = getElement('carrier-dashboard-page');
+        const orders = JSON.parse(localStorage.getItem('farmfura_pendingOrders')) || [];
+        
+        const myCurrentJob = orders.find(o => o.carrierId === currentUser.id && (o.status === 'accepted' || o.status === 'picked_up'));
+        const availableJobs = orders.filter(o => o.status === 'ready' && o.zone === currentUser.zone);
+
+        page.innerHTML = `
+            <div class="bg-white p-6 rounded-lg shadow mb-8">
+                <h3 class="font-semibold text-gray-500">Today's Earnings</h3>
+                <p class="text-4xl font-bold text-green-600 mt-2">₹${(currentUser.earnings || 0).toFixed(2)}</p>
+            </div>
+
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">My Current Job</h2>
+            <div id="current-job-container" class="mb-8">
+                ${myCurrentJob ? renderCurrentJob(myCurrentJob) : '<div class="bg-white p-8 rounded-lg shadow text-center text-gray-500">You do not have an active job.</div>'}
+            </div>
+
+            <h2 class="text-2xl font-bold text-gray-800 mb-4">Available for Pickup</h2>
+            <div id="available-jobs-list" class="space-y-4">
+                 ${availableJobs.length > 0 ? availableJobs.map(renderAvailableJob).join('') : '<div class="bg-white p-8 rounded-lg shadow text-center text-gray-500">No jobs available in your zone.</div>'}
+            </div>
+        `;
+        attachActionListeners();
+    }
+
+    function renderCurrentJob(order) {
+        return `
+            <div class="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-bold text-xl">Order ID: ${order.id}</p>
+                        <p class="text-gray-600">Status: <span class="font-semibold capitalize">${order.status.replace('_', ' ')}</span></p>
+                    </div>
+                    <p class="text-xl font-bold text-green-700">Payout: ₹${order.payout.toFixed(2)}</p>
+                </div>
+                <div class="mt-4 border-t pt-4 space-y-3">
+                    <p><strong>Pickup From:</strong> ${order.assignedShopName} - <span class="font-mono bg-gray-100 p-1 rounded">${order.deliveryDock}</span></p>
+                    <p><strong>Deliver To:</strong> ${order.customer.name}, ${order.customer.address}, ${order.customer.pincode}</p>
+                </div>
+                <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a href="https://maps.google.com/?q=${order.customer.location.lat},${order.customer.location.lon}" target="_blank" class="block w-full text-center bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700">📍 Navigate to Customer</a>
+                    ${order.status === 'accepted' ? `<button class="action-btn w-full bg-yellow-500 text-white font-bold py-3 rounded-md" data-action="pickup" data-order-id="${order.id}">Mark as Picked Up</button>` : ''}
+                    ${order.status === 'picked_up' ? `<button class="action-btn w-full bg-green-600 text-white font-bold py-3 rounded-md" data-action="deliver" data-order-id="${order.id}">Mark as Delivered</button>` : ''}
+                </div>
+            </div>`;
+    }
+
+    function renderAvailableJob(order) {
+        return `
+            <div class="bg-white p-4 rounded-lg shadow border-l-4 border-gray-300">
+                 <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-bold">Order ID: ${order.id}</p>
+                        <p class="text-sm text-gray-600">Pickup: ${order.assignedShopName} (${order.deliveryDock})</p>
+                    </div>
+                    <p class="text-lg font-bold text-green-700">Payout: ₹${order.payout.toFixed(2)}</p>
+                </div>
+                <button class="action-btn mt-3 w-full bg-green-500 text-white font-bold py-2 rounded-md pulse-green" data-action="accept" data-order-id="${order.id}">Accept Job</button>
+            </div>`;
+    }
+
+    function finalLogin(user) {
+        currentUser = user;
+        if(!currentUser.earnings) currentUser.earnings = 0;
+        sessionStorage.setItem('bikeCarrierUser', JSON.stringify(user));
+
+        getElement('login-wrapper').style.display = 'none';
+        getElement('app-wrapper').style.display = 'block';
+        
+        getElement('app-header-content').innerHTML = `
+            <div>
+                <div class="text-3xl font-bold text-green-700 italic">🌱 Farmfura Carrier</div>
+                <span class="text-sm text-gray-600 block">Welcome, ${currentUser.name}</span>
+            </div>
+            <a href="#" id="logout-button" class="font-semibold text-red-600 hover:text-red-800">Logout</a>`;
+        getElement('logout-button').addEventListener('click', () => {
+            sessionStorage.removeItem('bikeCarrierUser');
+            window.location.reload();
+        });
+        renderDashboard();
+    }
+    
+    function attachActionListeners() {
+        document.querySelectorAll('.action-btn').forEach(btn => btn.addEventListener('click', handleJobAction));
+    }
+
+    function handleJobAction(e) {
+        const action = e.target.dataset.action;
+        const orderId = e.target.dataset.orderId;
+        let orders = JSON.parse(localStorage.getItem('farmfura_pendingOrders'));
+        const orderIndex = orders.findIndex(o => o.id === orderId);
+
+        if (orderIndex === -1) { showToast("Job is no longer available."); renderDashboard(); return; }
+        let order = orders[orderIndex];
+
+        if (action === 'accept') {
+            if (order.status !== 'ready') { showToast("Another carrier accepted this job."); renderDashboard(); return; }
+            const hasActiveJob = orders.some(o => o.carrierId === currentUser.id && (o.status === 'accepted' || o.status === 'picked_up'));
+            if(hasActiveJob) { showToast("You must complete your current job first."); return; }
+            
+            order.status = 'accepted';
+            order.carrierId = currentUser.id;
+            order.carrierName = currentUser.name;
+        } else if (action === 'pickup') {
+            order.status = 'picked_up';
+        } else if (action === 'deliver') {
+            order.status = 'delivered';
+            
+            let employees = JSON.parse(localStorage.getItem('farmfura_employees'));
+            const carrier = employees.find(emp => emp.id === currentUser.id);
+            if (carrier) {
+                carrier.earnings = (carrier.earnings || 0) + order.payout;
+                currentUser.earnings = carrier.earnings;
+                localStorage.setItem('farmfura_employees', JSON.stringify(employees));
+            }
+            showToast(`Order delivered! ₹${order.payout.toFixed(2)} added to your earnings.`);
+        }
+        
+        orders[orderIndex] = order;
+        localStorage.setItem('farmfura_pendingOrders', JSON.stringify(orders));
+        renderDashboard();
+    }
+
+    window.addEventListener('storage', (event) => {
+        if (event.key === 'farmfura_pendingOrders' && currentUser) {
+            const newOrders = JSON.parse(event.newValue || '[]');
+            const oldOrders = JSON.parse(event.oldValue || '[]');
+            const newAvailableJob = newOrders.find(o => o.status === 'ready' && o.zone === currentUser.zone);
+            const wasJobAvailable = oldOrders.some(o => o.status === 'ready' && o.zone === currentUser.zone);
+            if (newAvailableJob && !wasJobAvailable) {
+                showToast("🔔 New Job Available for Pickup!");
+                notificationSound.triggerAttackRelease("E5", "0.5");
+            }
+            renderDashboard();
+        }
+    });
+
+    const renderPhoneStep = () => {
+        getElement('login-container').innerHTML = `
+            <h2 class="text-xl font-bold text-center mb-4">Carrier Login</h2>
+            <p class="text-center text-gray-500 mb-6">Enter your phone number.</p>
+            <input type="tel" id="login-phone" class="w-full p-3 border rounded-md" placeholder="10-digit phone">
+            <button id="phone-continue-btn" class="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-md">Continue</button>`;
+        getElement('phone-continue-btn').addEventListener('click', handlePhoneSubmit);
+    };
+
+    const handlePhoneSubmit = () => {
+        const phone = getElement('login-phone').value;
+        const user = (JSON.parse(localStorage.getItem('farmfura_employees')) || []).find(e => e.phone === phone && e.role === 'bike_carrier');
+        if (user && user.status === 'Active') { currentUser = user; renderOtpStep(phone); } 
+        else { showToast('Bike Carrier account not found or is not active.'); }
+    };
+
+    const renderOtpStep = (phone) => {
+        getElement('login-container').innerHTML = `
+            <h2 class="text-xl font-bold text-center mb-4">Enter OTP</h2>
+            <p class="text-center text-gray-500 mb-6">OTP sent to ${phone}. (Demo: 1234)</p>
+            <input type="text" id="login-otp" class="w-full p-3 border rounded-md text-center" maxlength="4">
+            <button id="otp-continue-btn" class="mt-4 w-full bg-green-600 text-white font-bold py-3 rounded-md">Verify & Login</button>`;
+        getElement('otp-continue-btn').addEventListener('click', handleOtpSubmit);
+    };
+
+    const handleOtpSubmit = () => {
+        if (getElement('login-otp').value === '1234') { finalLogin(currentUser); } 
+        else { showToast('Invalid OTP.'); }
+    };
+    
+    const init = () => {
+        const savedUser = sessionStorage.getItem('bikeCarrierUser');
+        if (savedUser) { finalLogin(JSON.parse(savedUser)); } 
+        else { renderPhoneStep(); }
+    };
+    init();
+});
+</script>
+</body>
+</html>

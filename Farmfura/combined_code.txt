@@ -1,0 +1,2056 @@
+
+
+
+# ===== FILE: /metadata.json =====
+
+{
+  "name": "Farmfura -bike Carrier Portal",
+  "description": "A portal for bike carriers to manage delivery jobs, track earnings, and update their profiles for the Farmfura platform.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
+
+
+# ===== FILE: /App.tsx =====
+
+
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import Auth from './components/Auth';
+import MainApp from './components/MainApp';
+import Toast from './components/Toast';
+import { User } from './types';
+import { api } from './services/api';
+import { translations } from './constants';
+
+export const AuthContext = React.createContext<{
+  currentUser: User | null;
+  login: (user: User) => void;
+  logout: () => void;
+  updateUser: (user: User) => void;
+}>({
+  currentUser: null,
+  login: () => {},
+  logout: () => {},
+  updateUser: () => {},
+});
+
+export const LanguageContext = React.createContext<{
+  language: string;
+  setLanguage: (lang: string) => void;
+  translate: (key: string, params?: Record<string, string | number>) => string;
+}>({
+  language: 'en',
+  setLanguage: () => {},
+  translate: (key: string) => key,
+});
+
+export const ToastContext = React.createContext<(message: string, isError?: boolean) => void>(() => {});
+
+const App: React.FC = () => {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [language, setLanguageState] = useState<string>(localStorage.getItem('farmfura_carrier_preferred_lang') || 'en');
+  const [toast, setToast] = useState<{ message: string; isError: boolean; id: number } | null>(null);
+
+  useEffect(() => {
+    api.initializeData();
+  }, []);
+
+  const login = useCallback((user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('farmfura_carrier_session', JSON.stringify(user));
+  }, []);
+
+  const logout = useCallback(() => {
+    setCurrentUser(null);
+    localStorage.removeItem('farmfura_carrier_session');
+  }, []);
+  
+  const updateUser = useCallback((user: User) => {
+    setCurrentUser(user);
+    localStorage.setItem('farmfura_carrier_session', JSON.stringify(user));
+  }, []);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('farmfura_carrier_session');
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+    }
+  }, []);
+
+  const setLanguage = useCallback((lang: string) => {
+    setLanguageState(lang);
+    localStorage.setItem('farmfura_carrier_preferred_lang', lang);
+  }, []);
+
+  const translate = useCallback((key: string, params: Record<string, string | number> = {}) => {
+    let text = translations[language as keyof typeof translations]?.[key as any] || translations['en'][key as any] || `[${key}]`;
+    for (const param in params) {
+      text = text.replace(`{${param}}`, String(params[param]));
+    }
+    return text;
+  }, [language]);
+
+  const showToast = useCallback((message: string, isError: boolean = false) => {
+    setToast({ message, isError, id: Date.now() });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+  
+  const authContextValue = useMemo(() => ({ currentUser, login, logout, updateUser }), [currentUser, login, logout, updateUser]);
+  const languageContextValue = useMemo(() => ({ language, setLanguage, translate }), [language, setLanguage, translate]);
+
+  return (
+    <AuthContext.Provider value={authContextValue}>
+      <LanguageContext.Provider value={languageContextValue}>
+        <ToastContext.Provider value={showToast}>
+          {currentUser ? <MainApp /> : <Auth />}
+          {toast && <Toast message={toast.message} isError={toast.isError} onClose={() => setToast(null)} />}
+        </ToastContext.Provider>
+      </LanguageContext.Provider>
+    </AuthContext.Provider>
+  );
+};
+
+export default App;
+
+
+
+# ===== FILE: /types.ts =====
+
+
+export interface User {
+  id: string;
+  name: string;
+  role: 'bike_carrier' | '4x4_carrier' | 'shopkeeper' | 'shop_owner';
+  status: 'Active' | 'Pending' | 'Accepted' | 'Rejected' | 'Expired';
+  phone: string;
+  vehicleType: string;
+  vehicleNumber: string;
+  licenseFileName?: string;
+  rcFileName?: string;
+  livePhoto?: string;
+  approvalTimestamp?: number;
+  assignedHub?: string;
+  rejectionReason?: string;
+  bankDetails?: BankDetails;
+  availableBalance?: number;
+}
+
+export interface BankDetails {
+    accountNumber: string;
+    ifsc: string;
+    branch: string;
+    bank: string;
+}
+
+export interface Order {
+  id: string;
+  customer: { name: string; address: string; };
+  items: string;
+  assignedShopName: string;
+  payout: number;
+  status: 'packing' | 'ready' | 'accepted_by_carrier' | 'picked_up' | 'delivered';
+  carrierId?: string;
+}
+
+export interface Job {
+  id: string;
+  date: string;
+  orderId: string;
+  payout: number;
+  status: 'Completed' | 'Cancelled';
+  carrierId: string;
+}
+
+export interface RegistrationData {
+    phone?: string;
+    phoneVerified?: boolean;
+    fullName?: string;
+    vehicleType?: string;
+    vehicleNumber?: string;
+    licenseFileName?: string;
+    licenseFileDataUrl?: string;
+    rcFileName?: string;
+    rcFileDataUrl?: string;
+    experience?: string;
+    emergencyContact?: string;
+    livePhoto?: string;
+}
+
+
+# ===== FILE: /constants.ts =====
+
+export const REG_PROGRESS_KEY = 'farmfura_carrier_registration_progress';
+
+export const translations = {
+    en: {
+        portal_title: 'Farmfura - Bike Carrier Portal',
+        back_to_portal: '← Back to Portal',
+        back_btn: 'Back',
+        carrier_login: 'Bike Carrier Login',
+        send_otp_btn: 'Continue',
+        verify_login: 'Verify & Login',
+        change_number: 'Change Number',
+        nav_logout: 'Logout',
+        welcome_user: 'Welcome, {name}',
+        nav_deliveries: 'Deliveries',
+        nav_profile: 'Me',
+        nav_transactions: 'Transactions',
+        nav_rewards: 'Rewards',
+        no_account: "Don't have an account?",
+        register_link: 'Register here',
+        register_again: 'Register Again',
+        carrier_registration: 'Bike Carrier Registration',
+        register_btn: 'Complete Registration',
+        has_account: 'Already have an account?',
+        login_link: 'Login here',
+        phone_placeholder: '10-digit phone number',
+        otp_placeholder: 'Enter OTP',
+        name_placeholder: 'Full Name',
+        reg_step1_prompt: 'Enter your phone number to begin.',
+        verify_phone_title: 'Verify Phone Number',
+        otp_sent_to: 'An OTP has been sent to',
+        otp_placeholder_6: '6-digit OTP',
+        verify_otp_btn: 'Verify & Proceed',
+        final_details_title: 'Final Details',
+        name_as_per_license: 'Name as per License',
+        vehicle_type: 'Vehicle Type (e.g., TVS Jupiter)',
+        vehicle_number: 'Vehicle Number (e.g., KA 01 AB 1234)',
+        upload_license: "Driver's License",
+        upload_rc: 'Vehicle RC Book',
+        prev_experience: 'Previous Experience (Optional)',
+        experience_placeholder_delivery: 'e.g., Worked as a delivery partner for 1 year...',
+        emergency_contact: 'Emergency Contact (Optional)',
+        live_photo: 'Live Photo',
+        capture_photo_btn: 'Capture Photo',
+        retake_photo_btn: 'Retake Photo',
+        application_pending: 'Your application is under review. Please check back later.',
+        application_rejected: 'Your application was rejected. Reason: {reason}',
+        application_expired: 'Your onboarding window has expired. Please contact support.',
+        progress_restored: 'Your registration progress has been restored.',
+        allow_camera_access: 'Please allow camera access.',
+        retry_camera: 'Retry Camera',
+        not_specified: 'Not specified',
+        onboarding_title: 'Onboarding Instructions',
+        visit_hub_message: 'Please visit your assigned hub within 48 hours for final onboarding.',
+        scan_qr_prompt: 'Scan the QR code provided by your Hub Manager to activate your account.',
+        scan_qr_btn: 'Scan QR Code',
+        scan_qr_title: 'Scan QR Code',
+        cancel_scan: 'Cancel',
+        allow_camera_access_qr: 'Please allow camera access to scan the QR code.',
+        click_to_scan: 'Click video to simulate scan',
+        otp_lockout: 'Too many attempts. Please try again in {seconds}s.',
+        qr_success: 'QR Code Scanned Successfully! Activating your account...',
+        profile_title: 'Me',
+        rewards_title: 'My Rewards',
+        rewards_desc: 'View your earned rewards and points.',
+        scan_title: 'QR Scanner',
+        scan_desc: 'Scan package QR codes for pickup & delivery.',
+        available_jobs: 'Available Jobs',
+        my_pickups: 'My Pickups',
+        payout: 'Payout',
+        no_available_jobs: 'No new delivery jobs available right now.',
+        no_active_pickups: 'You have no active pickups.',
+        accept_job_btn: 'Accept Job',
+        drop_job_btn: 'Drop Job',
+        pickup_from: 'Pickup from:',
+        deliver_to: 'Deliver to:',
+        confirm_job_title: 'Confirm Job Acceptance',
+        job_summary: 'You are about to accept this delivery job:',
+        confirm: 'Confirm',
+        cancel: 'Cancel',
+        job_accepted_success: 'Job accepted successfully!',
+        job_accept_failed: 'Failed to accept job.',
+        help_support: 'Help & Support',
+        faq1_q: 'How do I accept a job?',
+        faq1_a: 'Go to the Deliveries tab, check "Available Jobs", and tap "Accept Job" on a delivery you want to take.',
+        faq2_q: 'Where do I see my payouts?',
+        faq2_a: 'Go to the "Transactions" tab to see a history of all your completed delivery payouts.',
+        faq3_q: 'What is my main role?',
+        faq3_a: 'Your main role is to pick up packages from the assigned Farmfura store and deliver them to the customer\'s home address as shown on the job card.',
+        contact_support: 'Contact Support',
+        rewards_points: 'Your Points',
+        reward_tiers: 'Reward Tiers',
+        tier_bronze: 'Bronze: Basic Payout',
+        tier_silver: 'Silver (1000 pts): +5% Payout',
+        tier_gold: 'Gold (5000 pts): +10% Payout',
+        transaction_history: 'Transaction History',
+        no_transactions: 'No transactions yet.',
+        confirm_drop_title: 'Confirm Job Drop',
+        confirm_drop_body: 'Are you sure you want to drop this job? This may affect your rating.',
+        yes_drop: 'Yes, Drop',
+        no: 'No',
+        job_dropped_success: 'Job dropped successfully.',
+        bank_details: 'Bank Details',
+        manage_bank_details: 'Manage your bank account for payouts.',
+        bank_account_number: 'Bank Account Number',
+        ifsc_code: 'IFSC Code',
+        branch_name: 'Branch Name',
+        bank_name: 'Bank Name',
+        save_details: 'Save Details',
+        bank_details_saved: 'Bank details saved successfully!',
+        scan_camera_feed: 'Scanner Camera Feed',
+        switch_camera: 'Switch Camera',
+        camera_error: 'Could not access camera. Please check permissions.',
+        starting_camera: 'Starting camera...',
+        vehicle_details: 'Vehicle Details',
+        wallet: "Wallet",
+        total_earnings: "Total Earnings",
+        available_balance: "Available Balance",
+        withdraw: "Withdraw Earnings",
+        withdraw_confirmation_title: "Confirm Withdrawal",
+        withdraw_confirmation_body: "You are about to withdraw {amount} to the following account:",
+        no_bank_details_prompt: "Please add your bank details to withdraw earnings.",
+        add_bank_details: "Add Bank Details",
+        withdrawal_success: "Withdrawal successful! The amount will be credited within 2-3 business days.",
+    },
+    kn: {
+        portal_title: 'ಫಾರ್ಮ್‌ಫುರಾ - ಬೈಕ್ ಕ್ಯಾರಿಯರ್ ಪೋರ್ಟಲ್',
+        back_to_portal: '← ಪೋರ್ಟಲ್‌ಗೆ ಹಿಂತಿರುಗಿ',
+        back_btn: 'ಹಿಂದೆ',
+        carrier_login: 'ಬೈಕ್ ಕ್ಯಾರಿಯರ್ ಲಾಗಿನ್',
+        send_otp_btn: 'ಮುಂದುವರಿಸಿ',
+        verify_login: 'ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಲಾಗಿನ್ ಮಾಡಿ',
+        change_number: 'ಸಂಖ್ಯೆಯನ್ನು ಬದಲಾಯಿಸಿ',
+        nav_logout: 'ಲಾಗ್ ಔಟ್',
+        welcome_user: 'ಸ್ವಾಗತ, {name}',
+        nav_deliveries: 'ಡೆಲಿವರಿಗಳು',
+        nav_profile: 'ನಾನು',
+        nav_transactions: 'ವಹಿವಾಟುಗಳು',
+        nav_rewards: 'ಬಹುಮಾನಗಳು',
+        no_account: "ಖಾತೆ ಇಲ್ಲವೇ?",
+        register_link: 'ಇಲ್ಲಿ ನೋಂದಾಯಿಸಿ',
+        register_again: 'ಮತ್ತೆ ನೋಂದಾಯಿಸಿ',
+        carrier_registration: 'ಬೈಕ್ ಕ್ಯಾರಿಯರ್ ನೋಂದಣಿ',
+        register_btn: 'ನೋಂದಣಿ ಪೂರ್ಣಗೊಳಿಸಿ',
+        has_account: 'ಈಗಾಗಲೇ ಖಾತೆ ಇದೆಯೇ?',
+        login_link: 'ಇಲ್ಲಿ ಲಾಗಿನ್ ಮಾಡಿ',
+        phone_placeholder: '10-ಅಂಕಿಯ ಫೋನ್ ಸಂಖ್ಯೆ',
+        otp_placeholder: 'OTP ನಮೂದಿಸಿ',
+        name_placeholder: 'ಪೂರ್ಣ ಹೆಸರು',
+        reg_step1_prompt: 'ಪ್ರಾರಂಭಿಸಲು ನಿಮ್ಮ ಫೋನ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.',
+        verify_phone_title: 'ಫೋನ್ ಸಂಖ್ಯೆಯನ್ನು ಪರಿಶೀಲಿಸಿ',
+        otp_sent_to: 'OTP ಕಳುಹಿಸಲಾಗಿದೆ',
+        otp_placeholder_6: '6-ಅಂಕಿಯ OTP',
+        verify_otp_btn: 'ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಮುಂದುವರಿಯಿರಿ',
+        final_details_title: 'ಅಂತಿಮ ವಿವರಗಳು',
+        name_as_per_license: 'ಪರವಾನಗಿ ಪ್ರಕಾರ ಹೆಸರು',
+        vehicle_type: 'ವಾಹನ ಪ್ರಕಾರ (ಉದಾ., TVS ಜುಪಿಟರ್)',
+        vehicle_number: 'ವಾಹನ ಸಂಖ್ಯೆ (ಉದಾ., KA 01 AB 1234)',
+        upload_license: 'ಚಾಲನಾ ಪರವಾನಗಿ',
+        upload_rc: 'ವಾಹನ RC ಪುಸ್ತಕ',
+        prev_experience: 'ಹಿಂದಿನ ಅನುಭವ (ಐಚ್ಛಿಕ)',
+        experience_placeholder_delivery: 'ಉದಾ., 1 ವರ್ಷ ಡೆಲಿವರಿ ಪಾಲುದಾರರಾಗಿ ಕೆಲಸ ಮಾಡಿದೆ...',
+        emergency_contact: 'ತುರ್ತು ಸಂಪರ್ಕ (ಐಚ್ಛಿಕ)',
+        live_photo: 'ಲೈವ್ ಫೋಟೋ',
+        capture_photo_btn: 'ಫೋಟೋ ಸೆರೆಹಿಡಿಯಿರಿ',
+        retake_photo_btn: 'ಫೋಟೋವನ್ನು ಮರುತೆಗೆದುಕೊಳ್ಳಿ',
+        application_pending: 'ನಿಮ್ಮ ಅಪ್ಲಿಕೇಶನ್ ಪರಿಶೀಲನೆಯಲ್ಲಿದೆ. ದಯವಿಟ್ಟು ನಂತರ ಪರಿಶೀಲಿಸಿ.',
+        application_rejected: 'ನಿಮ್ಮ ಅಪ್ಲಿಕೇಶನ್ ತಿರಸ್ಕರಿಸಲಾಗಿದೆ. ಕಾರಣ: {reason}',
+        application_expired: 'ನಿಮ್ಮ ಆನ್‌ಬೋರ್ಡಿಂಗ್ ಅವಧಿ ಮುಗಿದಿದೆ. ದಯವಿಟ್ಟು ಬೆಂಬಲವನ್ನು ಸಂಪರ್ಕಿಸಿ.',
+        progress_restored: 'ನಿಮ್ಮ ನೋಂದಣಿ ಪ್ರಗತಿಯನ್ನು ಮರುಸ್ಥಾಪಿಸಲಾಗಿದೆ.',
+        allow_camera_access: 'ದಯವಿಟ್ಟು ಕ್ಯಾಮೆರಾ ಪ್ರವೇಶವನ್ನು ಅನುಮತಿಸಿ.',
+        retry_camera: 'ಕ್ಯಾಮೆರಾ ಮರುಪ್ರಯತ್ನಿಸಿ',
+        not_specified: 'ನಿರ್ದಿಷ್ಟಪಡಿಸಲಾಗಿಲ್ಲ',
+        onboarding_title: 'ಆನ್‌ಬೋರ್ಡಿಂಗ್ ಸೂಚನೆಗಳು',
+        visit_hub_message: 'ಅಂತಿಮ ಆನ್‌ಬೋರ್ಡಿಂಗ್‌ಗಾಗಿ ದಯವಿಟ್ಟು 48 ಗಂಟೆಗಳ ಒಳಗೆ ನಿಮ್ಮ ನಿಗದಿತ ಹಬ್‌ಗೆ ಭೇಟಿ ನೀಡಿ.',
+        scan_qr_prompt: 'ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲು ನಿಮ್ಮ ಹಬ್ ಮ್ಯಾನೇಜರ್ ಒದಗಿಸಿದ QR ಕೋಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.',
+        scan_qr_btn: 'QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
+        scan_qr_title: 'QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
+        cancel_scan: 'ರದ್ದುಮಾಡಿ',
+        allow_camera_access_qr: 'QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಲು ದಯವಿಟ್ಟು ಕ್ಯಾಮೆರಾ ಪ್ರವೇಶವನ್ನು ಅನುಮತಿಸಿ.',
+        click_to_scan: 'ಸ್ಕ್ಯಾನ್ ಅನುಕರಿಸಲು ವೀಡಿಯೊ ಕ್ಲಿಕ್ ಮಾಡಿ',
+        otp_lockout: 'ತುಂಬಾ ಪ್ರಯತ್ನಗಳು. ದಯವಿಟ್ಟು {seconds} ಸೆಕೆಂಡುಗಳಲ್ಲಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.',
+        qr_success: 'QR ಕೋಡ್ ಯಶಸ್ವಿಯಾಗಿ ಸ್ಕ್ಯಾನ್ ಮಾಡಲಾಗಿದೆ! ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಲಾಗುತ್ತಿದೆ...',
+        profile_title: 'ನಾನು',
+        rewards_title: 'ನನ್ನ ಬಹುಮಾನಗಳು',
+        rewards_desc: 'ನೀವು ಗಳಿಸಿದ ಬಹುಮಾನಗಳು ಮತ್ತು ಅಂಕಗಳನ್ನು ವೀಕ್ಷಿಸಿ.',
+        scan_title: 'QR ಸ್ಕ್ಯಾನರ್',
+        scan_desc: 'ಪಿಕಪ್ ಮತ್ತು ವಿತರಣೆಗಾಗಿ ಪ್ಯಾಕೇಜ್ QR ಕೋಡ್‌ಗಳನ್ನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.',
+        available_jobs: 'ಲಭ್ಯವಿರುವ ಉದ್ಯೋಗಗಳು',
+        my_pickups: 'ನನ್ನ ಪಿಕಪ್‌ಗಳು',
+        payout: 'ಪಾವತಿ',
+        no_available_jobs: 'ಈಗ ಯಾವುದೇ ಹೊಸ ಡೆಲಿವರಿ ಉದ್ಯೋಗಗಳು ಲಭ್ಯವಿಲ್ಲ.',
+        no_active_pickups: 'ನಿಮ್ಮ ಬಳಿ ಯಾವುದೇ ಸಕ್ರಿಯ ಪಿಕಪ್‌ಗಳಿಲ್ಲ.',
+        accept_job_btn: 'ಉದ್ಯೋಗ ಸ್ವೀಕರಿಸಿ',
+        drop_job_btn: 'ಉದ್ಯೋಗ ಬಿಡಿ',
+        pickup_from: 'ಇಲ್ಲಿಂದ ಪಿಕಪ್ ಮಾಡಿ:',
+        deliver_to: 'ಗೆ ತಲುಪಿಸಿ:',
+        confirm_job_title: 'ಉದ್ಯೋಗ ಸ್ವೀಕಾರವನ್ನು ದೃಢೀಕರಿಸಿ',
+        job_summary: 'ನೀವು ಈ ಡೆಲಿವರಿ ಉದ್ಯೋಗವನ್ನು ಸ್ವೀಕರಿಸಲು ಹೊರಟಿದ್ದೀರಿ:',
+        confirm: 'ಖಚಿತಪಡಿಸಿ',
+        cancel: 'ರದ್ದುಮಾಡಿ',
+        job_accepted_success: 'ಉದ್ಯೋಗವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಸ್ವೀಕರಿಸಲಾಗಿದೆ!',
+        job_accept_failed: 'ಉದ್ಯೋಗ ಸ್ವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ.',
+        help_support: 'ಸಹಾಯ ಮತ್ತು ಬೆಂಬಲ',
+        faq1_q: 'ನಾನು ಉದ್ಯೋಗವನ್ನು ಹೇಗೆ ಸ್ವೀಕರಿಸುವುದು?',
+        faq1_a: 'ಡೆಲಿವರಿಗಳ ಟ್ಯಾಬ್‌ಗೆ ಹೋಗಿ, "ಲಭ್ಯವಿರುವ ಉದ್ಯೋಗಗಳು" ಪರಿಶೀಲಿಸಿ, ಮತ್ತು ನೀವು ತೆಗೆದುಕೊಳ್ಳಲು ಬಯಸುವ ಡೆಲಿವರಿಯ "ಉದ್ಯೋಗ ಸ್ವೀಕರಿಸಿ" ಟ್ಯಾಪ್ ಮಾಡಿ.',
+        faq2_q: 'ನನ್ನ ಪಾವತಿಗಳನ್ನು ನಾನು ಎಲ್ಲಿ ನೋಡಬಹುದು?',
+        faq2_a: '"ವಹಿವಾಟುಗಳು" ಟ್ಯಾಬ್‌ಗೆ ಹೋಗಿ ನಿಮ್ಮ ಎಲ್ಲಾ ಪೂರ್ಣಗೊಂಡ ಡೆಲಿವರಿ ಪಾವತಿಗಳ ಇತಿಹಾಸವನ್ನು ನೋಡಿ.',
+        faq3_q: 'ನನ್ನ ಮುಖ್ಯ ಪಾತ್ರವೇನು?',
+        faq3_a: 'ನಿಮ್ಮ ಮುಖ್ಯ ಪಾತ್ರವೆಂದರೆ ನಿಯೋಜಿತ ಫಾರ್ಮ್‌ಫುರಾ ಅಂಗಡಿಯಿಂದ ಪ್ಯಾಕೇಜ್‌ಗಳನ್ನು ತೆಗೆದುಕೊಂಡು, ಜಾಬ್ ಕಾರ್ಡ್‌ನಲ್ಲಿ ತೋರಿಸಿರುವಂತೆ ಗ್ರಾಹಕರ ಮನೆ ವಿಳಾಸಕ್ಕೆ ತಲುಪಿಸುವುದು.',
+        contact_support: 'ಬೆಂಬಲವನ್ನು ಸಂಪರ್ಕಿಸಿ',
+        rewards_points: 'ನಿಮ್ಮ ಅಂಕಗಳು',
+        reward_tiers: 'ಬಹುಮಾನ ಶ್ರೇಣಿಗಳು',
+        tier_bronze: 'ಕಂಚು: ಮೂಲ ಪಾವತಿ',
+        tier_silver: 'ಬೆಳ್ಳಿ (1000 ಅಂಕಗಳು): +5% ಪಾವತಿ',
+        tier_gold: 'ಚಿನ್ನ (5000 ಅಂಕಗಳು): +10% ಪಾವತಿ',
+        transaction_history: 'ವಹಿವಾಟಿನ ಇತಿಹಾಸ',
+        no_transactions: 'ಇನ್ನೂ ಯಾವುದೇ ವಹಿವಾಟುಗಳಿಲ್ಲ.',
+        confirm_drop_title: 'ಉದ್ಯೋಗ ಬಿಡುವುದನ್ನು ದೃಢೀಕರಿಸಿ',
+        confirm_drop_body: 'ಈ ಉದ್ಯೋಗವನ್ನು ಬಿಡಲು ನೀವು ಖಚಿತವಾಗಿದ್ದೀರಾ? ಇದು ನಿಮ್ಮ ರೇಟಿಂಗ್ ಮೇಲೆ ಪರಿಣಾಮ ಬೀರಬಹುದು.',
+        yes_drop: 'ಹೌದು, ಬಿಡಿ',
+        no: 'ಇಲ್ಲ',
+        job_dropped_success: 'ಉದ್ಯೋಗವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಬಿಡಲಾಗಿದೆ.',
+        bank_details: 'ಬ್ಯಾಂಕ್ ವಿವರಗಳು',
+        manage_bank_details: 'ಪಾವತಿಗಳಿಗಾಗಿ ನಿಮ್ಮ ಬ್ಯಾಂಕ್ ಖಾತೆಯನ್ನು ನಿರ್ವಹಿಸಿ.',
+        bank_account_number: 'ಬ್ಯಾಂಕ್ ಖಾತೆ ಸಂಖ್ಯೆ',
+        ifsc_code: 'IFSC ಕೋಡ್',
+        branch_name: 'ಶಾಖೆಯ ಹೆಸರು',
+        bank_name: 'ಬ್ಯಾಂಕ್ ಹೆಸರು',
+        save_details: 'ವಿವರಗಳನ್ನು ಉಳಿಸಿ',
+        bank_details_saved: 'ಬ್ಯಾಂಕ್ ವಿವರಗಳನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ!',
+        scan_camera_feed: 'ಸ್ಕ್ಯಾನರ್ ಕ್ಯಾಮೆರಾ ಫೀಡ್',
+        switch_camera: 'ಕ್ಯಾಮೆರಾ ಬದಲಿಸಿ',
+        camera_error: 'ಕ್ಯಾಮೆರಾವನ್ನು ಪ್ರವೇಶಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಅನುಮತಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.',
+        starting_camera: 'ಕ್ಯಾಮೆರಾ ಪ್ರಾರಂಭಿಸಲಾಗುತ್ತಿದೆ...',
+        vehicle_details: 'ವಾಹನ ವಿವರಗಳು',
+        wallet: "ವಾಲೆಟ್",
+        total_earnings: "ಒಟ್ಟು ಗಳಿಕೆಗಳು",
+        available_balance: "ಲಭ್ಯವಿರುವ ಬಾಕಿ",
+        withdraw: "ಗಳಿಕೆಗಳನ್ನು ಹಿಂಪಡೆಯಿರಿ",
+        withdraw_confirmation_title: "ಹಿಂತೆಗೆದುಕೊಳ್ಳುವಿಕೆಯನ್ನು ಖಚಿತಪಡಿಸಿ",
+        withdraw_confirmation_body: "ನೀವು {amount} ಮೊತ್ತವನ್ನು ಈ ಕೆಳಗಿನ ಖಾತೆಗೆ ಹಿಂಪಡೆಯಲು ಹೊರಟಿದ್ದೀರಿ:",
+        no_bank_details_prompt: "ಗಳಿಕೆಗಳನ್ನು ಹಿಂಪಡೆಯಲು ದಯವಿಟ್ಟು ನಿಮ್ಮ ಬ್ಯಾಂಕ್ ವಿವರಗಳನ್ನು ಸೇರಿಸಿ.",
+        add_bank_details: "ಬ್ಯಾಂಕ್ ವಿವರಗಳನ್ನು ಸೇರಿಸಿ",
+        withdrawal_success: "ಹಿಂತೆಗೆದುಕೊಳ್ಳುವಿಕೆ ಯಶಸ್ವಿಯಾಗಿದೆ! 2-3 ವ್ಯವಹಾರ ದಿನಗಳಲ್ಲಿ ಮೊತ್ತವನ್ನು ಜಮಾ ಮಾಡಲಾಗುತ್ತದೆ.",
+    },
+    hi: {
+        portal_title: 'फार्मफुरा - बाइक कैरियर पोर्टल',
+        back_to_portal: '← पोर्टल पर वापस जाएं',
+        back_btn: 'वापस',
+        carrier_login: 'बाइक कैरियर लॉगिन',
+        send_otp_btn: 'जारी रखें',
+        verify_login: 'सत्यापित करें और लॉगिन करें',
+        change_number: 'नंबर बदलें',
+        nav_logout: 'लॉग आउट',
+        welcome_user: 'स्वागत है, {name}',
+        nav_deliveries: 'डिलिवरी',
+        nav_profile: 'मैं',
+        nav_transactions: 'लेन-देन',
+        nav_rewards: 'पुरस्कार',
+        no_account: "खाता नहीं है?",
+        register_link: 'यहां रजिस्टर करें',
+        register_again: 'फिर से रजिस्टर करें',
+        carrier_registration: 'बाइक कैरियर पंजीकरण',
+        register_btn: 'पंजीकरण पूरा करें',
+        has_account: 'पहले से ही खाता है?',
+        login_link: 'यहां लॉगिन करें',
+        phone_placeholder: '10-अंकीय फ़ोन नंबर',
+        otp_placeholder: 'ओटीपी दर्ज करें',
+        name_placeholder: 'पूरा नाम',
+        reg_step1_prompt: 'शुरू करने के लिए अपना फ़ोन नंबर दर्ज करें।',
+        verify_phone_title: 'फ़ोन नंबर सत्यापित करें',
+        otp_sent_to: 'पर एक OTP भेजा गया है',
+        otp_placeholder_6: '6-अंकीय OTP',
+        verify_otp_btn: 'सत्यापित करें और आगे बढ़ें',
+        final_details_title: 'अंतिम विवरण',
+        name_as_per_license: 'लाइसेंस के अनुसार नाम',
+        vehicle_type: 'वाहन का प्रकार (उदा., TVS Jupiter)',
+        vehicle_number: 'वाहन संख्या (उदा., KA 01 AB 1234)',
+        upload_license: 'ड्राइविंग लाइसेंस',
+        upload_rc: 'वाहन RC बुक',
+        prev_experience: 'पिछला अनुभव (वैकल्पिक)',
+        experience_placeholder_delivery: 'उदा., एक डिलीवरी पार्टनर के रूप में 1 साल काम किया...',
+        emergency_contact: 'आपातकालीन संपर्क (वैकल्पिक)',
+        live_photo: 'लाइव फोटो',
+        capture_photo_btn: 'फोटो खींचे',
+        retake_photo_btn: 'फोटो फिर से लें',
+        application_pending: 'आपका आवेदन समीक्षाधीन है। कृपया बाद में जांचें।',
+        application_rejected: 'आपका आवेदन अस्वीकार कर दिया गया था। कारण: {reason}',
+        application_expired: 'आपकी ऑनबोर्डिंग विंडो समाप्त हो गई है। कृपया सहायता से संपर्क करें।',
+        progress_restored: 'आपकी पंजीकरण प्रगति बहाल कर दी गई है।',
+        allow_camera_access: 'कृपया कैमरा एक्सेस की अनुमति दें।',
+        retry_camera: 'कैमरा पुनः प्रयास करें',
+        not_specified: 'निर्दिष्ट नहीं है',
+        onboarding_title: 'ऑनबोर्डिंग निर्देश',
+        visit_hub_message: 'अंतिम ऑनबोर्डिंग के लिए कृपया 48 घंटों के भीतर अपने नियत हब पर जाएँ।',
+        scan_qr_prompt: 'अपना खाता सक्रिय करने के लिए अपने हब प्रबंधक द्वारा प्रदान किया गया QR कोड स्कैन करें।',
+        scan_qr_btn: 'QR कोड स्कैन करें',
+        scan_qr_title: 'QR कोड स्कैन करें',
+        cancel_scan: 'रद्द करें',
+        allow_camera_access_qr: 'QR कोड स्कैन करने के लिए कृपया कैमरा एक्सेस की अनुमति दें।',
+        click_to_scan: 'स्कैन का अनुकरण करने के लिए वीडियो पर क्लिक करें',
+        otp_lockout: 'बहुत अधिक प्रयास। कृपया {seconds} सेकंड में पुनः प्रयास करें।',
+        qr_success: 'QR कोड सफलतापूर्वक स्कैन किया गया! आपका खाता सक्रिय किया जा रहा है...',
+        profile_title: 'मैं',
+        rewards_title: 'मेरे पुरस्कार',
+        rewards_desc: 'अपने अर्जित पुरस्कार और अंक देखें।',
+        scan_title: 'क्यूआर स्कैनर',
+        scan_desc: 'पिकअप और डिलीवरी के लिए पैकेज क्यूआर कोड स्कैन करें।',
+        available_jobs: 'उपलब्ध नौकरियां',
+        my_pickups: 'मेरे पिकअप',
+        payout: 'भुगतान',
+        no_available_jobs: 'अभी कोई नई डिलीवरी नौकरी उपलब्ध नहीं है।',
+        no_active_pickups: 'आपके पास कोई सक्रिय पिकअप नहीं है।',
+        accept_job_btn: 'नौकरी स्वीकार करें',
+        drop_job_btn: 'नौकरी छोड़ें',
+        pickup_from: 'यहां से पिकअप करें:',
+        deliver_to: 'को वितरित करें:',
+        confirm_job_title: 'नौकरी स्वीकृति की पुष्टि करें',
+        job_summary: 'आप इस डिलीवरी नौकरी को स्वीकार करने वाले हैं:',
+        confirm: 'पुष्टि करें',
+        cancel: 'रद्द करें',
+        job_accepted_success: 'नौकरी सफलतापूर्वक स्वीकार कर ली गई!',
+        job_accept_failed: 'नौकरी स्वीकार करने में विफल।',
+        help_support: 'सहायता और समर्थन',
+        faq1_q: 'मैं नौकरी कैसे स्वीकार करूं?',
+        faq1_a: 'डिलिवरी टैब पर जाएं, "उपलब्ध नौकरियां" जांचें, और जिस डिलीवरी को आप लेना चाहते हैं, उस पर "नौकरी स्वीकार करें" पर टैप करें।',
+        faq2_q: 'मैं अपने भुगतान कहां देख सकता हूं?',
+        faq2_a: '"लेन-देन" टैब पर जाकर अपने सभी पूर्ण किए गए डिलीवरी भुगतानों का इतिहास देखें।',
+        faq3_q: 'मेरी मुख्य भूमिका क्या है?',
+        faq3_a: 'आपकी मुख्य भूमिका नियत फार्मफुरा स्टोर से पैकेज उठाना और उन्हें जॉब कार्ड पर दिखाए अनुसार ग्राहक के घर के पते पर पहुंचाना है।',
+        contact_support: 'सहायता से संपर्क करें',
+        rewards_points: 'आपके अंक',
+        reward_tiers: 'पुरस्कार स्तर',
+        tier_bronze: 'कांस्य: मूल भुगतान',
+        tier_silver: 'चांदी (1000 अंक): +5% भुगतान',
+        tier_gold: 'सोना (5000 अंक): +10% भुगतान',
+        transaction_history: 'लेन-देन इतिहास',
+        no_transactions: 'अभी तक कोई लेन-देन नहीं हुआ है।',
+        confirm_drop_title: 'नौकरी छोड़ने की पुष्टि करें',
+        confirm_drop_body: 'क्या आप वाकई इस नौकरी को छोड़ना चाहते हैं? यह आपकी रेटिंग को प्रभावित कर सकता है।',
+        yes_drop: 'हाँ, छोड़ें',
+        no: 'नहीं',
+        job_dropped_success: 'नौकरी सफलतापूर्वक छोड़ दी गई।',
+        bank_details: 'बैंक विवरण',
+        manage_bank_details: 'भुगतान के लिए अपना बैंक खाता प्रबंधित करें।',
+        bank_account_number: 'बैंक खाता संख्या',
+        ifsc_code: 'IFSC कोड',
+        branch_name: 'शाखा का नाम',
+        bank_name: 'बैंक का नाम',
+        save_details: 'विवरण सहेजें',
+        bank_details_saved: 'बैंक विवरण सफलतापूर्वक सहेजे गए!',
+        scan_camera_feed: 'स्कैनर कैमरा फ़ीड',
+        switch_camera: 'कैमरा बदलें',
+        camera_error: 'कैमरा एक्सेस नहीं हो सका। कृपया अनुमतियां जांचें।',
+        starting_camera: 'कैमरा शुरू हो रहा है...',
+        vehicle_details: 'वाहन विवरण',
+        wallet: "वॉलेट",
+        total_earnings: "कुल कमाई",
+        available_balance: "उपलब्ध शेष राशि",
+        withdraw: "कमाई निकालें",
+        withdraw_confirmation_title: "निकासी की पुष्टि करें",
+        withdraw_confirmation_body: "आप निम्नलिखित खाते में {amount} निकालने वाले हैं:",
+        no_bank_details_prompt: "कमाई निकालने के लिए कृपया अपना बैंक विवरण जोड़ें।",
+        add_bank_details: "बैंक विवरण जोड़ें",
+        withdrawal_success: "निकासी सफल! राशि 2-3 कार्य दिवसों के भीतर जमा कर दी जाएगी।",
+    },
+};
+
+
+# ===== FILE: /package.json =====
+
+{
+  "name": "farmfura--bike-carrier-portal",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
+
+
+
+# ===== FILE: /index.html =====
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Farmfura - Bike Carrier Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-100">
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
+
+
+
+# ===== FILE: /index.tsx =====
+
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+
+
+# ===== FILE: /tsconfig.json =====
+
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+
+
+# ===== FILE: /vite.config.ts =====
+
+import path from 'path';
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, '.', '');
+    return {
+      server: {
+        port: 3000,
+        host: '0.0.0.0',
+      },
+      plugins: [react()],
+      define: {
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, '.'),
+        }
+      }
+    };
+});
+
+
+
+# ===== FILE: /README.md =====
+
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
+
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/drive/1Wfyb4JZWdNxwLvVQA9ICXkAkpxZEYKrW
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
+
+
+
+# ===== FILE: /services/api.ts =====
+
+
+import { User, Order, Job, RegistrationData } from '../types';
+import { REG_PROGRESS_KEY } from '../constants';
+
+const EMPLOYEES_KEY = 'farmfura_employees';
+const ORDERS_KEY = 'farmfura_pendingOrders';
+const JOBS_KEY = 'farmfura_delivery_jobs';
+
+const defaultEmployees: User[] = [
+    { id: 'BC_DEMO_001', name: 'Demo User', role: 'bike_carrier', status: 'Active', phone: '8000000000', vehicleType: 'Demo Bike 125', vehicleNumber: 'TS-09-XY-9999', availableBalance: 1250 },
+    { id: 'BC001', name: 'Ramesh Kumar', role: 'bike_carrier', status: 'Active', phone: '9000000003', vehicleType: 'TVS Jupiter', vehicleNumber: 'KA-01-AB-1234', availableBalance: 850 },
+    { id: '4x4001', name: 'Vikram Singh', role: '4x4_carrier', status: 'Active', phone: '9000000004', vehicleType: 'Mahindra Bolero', vehicleNumber: 'KA-02-CD-5678', availableBalance: 2100 },
+    {
+        id: 'BC_ACCEPTED',
+        name: 'Raj Verma',
+        role: 'bike_carrier',
+        status: 'Accepted',
+        phone: '9000000005',
+        vehicleType: 'Honda Activa',
+        vehicleNumber: 'KA-05-EF-5678',
+        licenseFileName: 'raj_license.pdf',
+        rcFileName: 'raj_rc.pdf',
+        livePhoto: 'https://placehold.co/100x100/e2e8f0/e2e8f0?text=RV',
+        approvalTimestamp: Date.now(),
+        assignedHub: 'Farmfura Hub - Koramangala',
+        availableBalance: 0,
+    },
+];
+
+const defaultOrders: Order[] = [
+    { id: 'ORD5432', customer: { name: 'Rina Mehta', address: '123, Rose Villa, Koramangala' }, items: '2kg Tomato, 1kg Potato', assignedShopName: 'FreshMart', payout: 45, status: 'packing' },
+    { id: 'ORD5433', customer: { name: 'Arjun Nair', address: 'A-40, Sun City Apts, HSR Layout' }, items: '5kg Onion, 2kg Carrot', assignedShopName: 'Farmfura Koramangala', payout: 55, status: 'accepted_by_carrier', carrierId: 'BC001' },
+    { id: 'ORD5434', customer: { name: 'Pooja Desai', address: '789, Green Heights, Indiranagar' }, items: '1kg Ginger, 500g Garlic', assignedShopName: 'Farmfura Koramangala', payout: 40, status: 'ready' },
+    { id: 'ORD5435', customer: { name: 'Karan Singh', address: 'Plot 55, BTM 2nd Stage' }, items: '1kg Spinach, 1kg Beans', assignedShopName: 'FreshMart', payout: 35, status: 'ready' }
+];
+
+const defaultJobs: Job[] = [
+     { id: 'JOB1', date: '2025-10-14', orderId: 'ORD5001', payout: 50, status: 'Completed', carrierId: 'BC001' },
+     { id: 'JOB2', date: '2025-10-15', orderId: 'ORD5002', payout: 45, status: 'Completed', carrierId: 'BC001' },
+     { id: 'JOB3', date: '2025-10-16', orderId: 'ORD5003', payout: 60, status: 'Completed', carrierId: 'BC_DEMO_001' },
+];
+
+const initLocalStorage = <T,>(key: string, defaultData: T) => {
+    if (!localStorage.getItem(key)) {
+        localStorage.setItem(key, JSON.stringify(defaultData));
+    }
+};
+
+const getFromStorage = <T,>(key: string): T => {
+    return JSON.parse(localStorage.getItem(key) || '[]') as T;
+};
+
+const saveToStorage = <T,>(key: string, data: T) => {
+    localStorage.setItem(key, JSON.stringify(data));
+};
+
+
+export const api = {
+    initializeData: () => {
+        initLocalStorage(EMPLOYEES_KEY, defaultEmployees);
+        initLocalStorage(ORDERS_KEY, defaultOrders);
+        initLocalStorage(JOBS_KEY, defaultJobs);
+    },
+    
+    // User / Employee methods
+    getEmployees: (): User[] => getFromStorage<User[]>(EMPLOYEES_KEY),
+    getEmployeeByPhone: (phone: string): User | undefined => {
+        const users = api.getEmployees();
+        return users.find(u => u.phone === phone && (u.role === 'bike_carrier' || u.role === '4x4_carrier'));
+    },
+    updateEmployee: (updatedUser: User): void => {
+        let users = api.getEmployees();
+        const index = users.findIndex(u => u.id === updatedUser.id);
+        if (index > -1) {
+            users[index] = updatedUser;
+        } else {
+            users.push(updatedUser);
+        }
+        saveToStorage(EMPLOYEES_KEY, users);
+    },
+    createEmployee: (data: RegistrationData): User => {
+        const newUser: User = {
+            id: 'BC' + Date.now(),
+            name: data.fullName!,
+            phone: data.phone!,
+            role: 'bike_carrier',
+            status: 'Pending',
+            vehicleType: data.vehicleType!,
+            vehicleNumber: data.vehicleNumber!,
+            licenseFileName: data.licenseFileName,
+            rcFileName: data.rcFileName,
+            livePhoto: data.livePhoto,
+            availableBalance: 0,
+        };
+        let users = api.getEmployees();
+        users = users.filter(emp => !(emp.phone === newUser.phone && (emp.status === 'Rejected' || emp.status === 'Expired')));
+        users.push(newUser);
+        saveToStorage(EMPLOYEES_KEY, users);
+        return newUser;
+    },
+    withdrawFromWallet: (userId: string): User | null => {
+        let users = api.getEmployees();
+        const index = users.findIndex(u => u.id === userId);
+        if (index > -1 && users[index].availableBalance) {
+            users[index].availableBalance = 0;
+            saveToStorage(EMPLOYEES_KEY, users);
+            return users[index];
+        }
+        return null;
+    },
+
+    // Order methods
+    getAvailableOrders: (): Order[] => {
+        return getFromStorage<Order[]>(ORDERS_KEY).filter(o => o.status === 'ready');
+    },
+    getAcceptedOrders: (carrierId: string): Order[] => {
+        return getFromStorage<Order[]>(ORDERS_KEY).filter(o => o.status === 'accepted_by_carrier' && o.carrierId === carrierId);
+    },
+    updateOrder: (updatedOrder: Order): void => {
+        const orders = getFromStorage<Order[]>(ORDERS_KEY);
+        const index = orders.findIndex(o => o.id === updatedOrder.id);
+        if (index > -1) {
+            orders[index] = updatedOrder;
+            saveToStorage(ORDERS_KEY, orders);
+        }
+    },
+    
+    // Job methods
+    getCompletedJobs: (carrierId: string): Job[] => {
+        return getFromStorage<Job[]>(JOBS_KEY).filter(j => j.carrierId === carrierId && j.status === 'Completed');
+    },
+
+    // Registration progress methods
+    saveRegProgress: (data: RegistrationData) => saveToStorage(REG_PROGRESS_KEY, data),
+    loadRegProgress: (): RegistrationData | null => {
+        const data = localStorage.getItem(REG_PROGRESS_KEY);
+        return data ? JSON.parse(data) : null;
+    },
+    clearRegProgress: () => localStorage.removeItem(REG_PROGRESS_KEY),
+};
+
+
+# ===== FILE: /hooks/useCamera.ts =====
+
+
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+
+type CameraStatus = 'idle' | 'starting' | 'running' | 'error' | 'permission';
+
+interface UseCameraResult {
+  stream: MediaStream | null;
+  status: CameraStatus;
+  startCamera: (facingMode?: 'user' | 'environment') => Promise<void>;
+  stopCamera: () => void;
+  captureFrame: () => string | null;
+  videoRef: React.RefObject<HTMLVideoElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+}
+
+export const useCamera = (): UseCameraResult => {
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [status, setStatus] = useState<CameraStatus>('idle');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  const stopCamera = useCallback(() => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+      setStatus('idle');
+      if (videoRef.current) {
+          videoRef.current.srcObject = null;
+      }
+    }
+  }, [stream]);
+
+  const startCamera = useCallback(async (facingMode: 'user' | 'environment' = 'user') => {
+    stopCamera();
+    setStatus('starting');
+    try {
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode },
+        audio: false,
+      });
+      setStream(newStream);
+      setStatus('running');
+      if (videoRef.current) {
+        videoRef.current.srcObject = newStream;
+      }
+    } catch (err) {
+      console.error("Camera access error:", err);
+      if (err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "PermissionDeniedError")) {
+          setStatus('permission');
+      } else {
+          setStatus('error');
+      }
+    }
+  }, [stopCamera]);
+
+  const captureFrame = useCallback((): string | null => {
+    if (videoRef.current && canvasRef.current && stream) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d');
+      if (context) {
+        // Flip horizontally for user-facing camera
+        const isUserFacing = stream.getVideoTracks()[0]?.getSettings().facingMode === 'user';
+        if (isUserFacing) {
+            context.translate(canvas.width, 0);
+            context.scale(-1, 1);
+        }
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL('image/jpeg');
+      }
+    }
+    return null;
+  }, [stream]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  return { stream, status, startCamera, stopCamera, captureFrame, videoRef, canvasRef };
+};
+
+
+# ===== FILE: /components/Auth.tsx =====
+
+
+import React, { useState, useContext, useEffect, useRef } from 'react';
+import { AuthContext, LanguageContext, ToastContext } from '../App';
+import { api } from '../services/api';
+import { RegistrationData, User } from '../types';
+import { useCamera } from '../hooks/useCamera';
+
+type AuthView = 'login' | 'register';
+type LoginStep = 'phone' | 'otp' | 'status' | 'onboarding' | 'qrScanner';
+type RegisterStep = 'phone' | 'otp' | 'details';
+
+const Auth: React.FC = () => {
+    const { login } = useContext(AuthContext);
+    const { language, setLanguage, translate } = useContext(LanguageContext);
+    const showToast = useContext(ToastContext);
+
+    const [authView, setAuthView] = useState<AuthView>('login');
+    const [loginStep, setLoginStep] = useState<LoginStep>('phone');
+    const [registerStep, setRegisterStep] = useState<RegisterStep>('phone');
+
+    const [phone, setPhone] = useState('');
+    const [otp, setOtp] = useState('');
+    const [tempUser, setTempUser] = useState<User | null>(null);
+    const [statusInfo, setStatusInfo] = useState({ message: '', type: '' });
+    
+    const [regData, setRegData] = useState<RegistrationData>({});
+    const { videoRef, canvasRef, status: cameraStatus, startCamera, stopCamera, captureFrame } = useCamera();
+    const [livePhotoPreview, setLivePhotoPreview] = useState<string | null>(null);
+
+    // Load registration progress on mount
+    useEffect(() => {
+        const savedProgress = api.loadRegProgress();
+        if (savedProgress) {
+            setRegData(savedProgress);
+            showToast(translate('progress_restored'));
+            if (savedProgress.fullName) setRegisterStep('details');
+            else if (savedProgress.phoneVerified) setRegisterStep('details');
+            else if (savedProgress.phone) setRegisterStep('otp');
+            else setRegisterStep('phone');
+        }
+    }, [showToast, translate]);
+
+    const handleLoginPhoneSubmit = () => {
+        if (!/^\d{10}$/.test(phone)) return showToast(translate('phone_placeholder'), true);
+        
+        let user = api.getEmployeeByPhone(phone);
+        if (!user) return showToast('No carrier account found.', true);
+        
+        // Check for expired onboarding
+        if (user.status === 'Accepted' && user.approvalTimestamp && (Date.now() - user.approvalTimestamp > 48 * 60 * 60 * 1000)) {
+            user.status = 'Expired';
+            api.updateEmployee(user);
+        }
+        
+        setTempUser(user);
+        
+        switch (user.status) {
+            case 'Active':
+                showToast('OTP Sent! (Demo: 1234)');
+                setLoginStep('otp');
+                break;
+            case 'Accepted':
+                setLoginStep('onboarding');
+                break;
+            case 'Pending':
+            case 'Rejected':
+            case 'Expired':
+                setStatusInfo({
+                    message: translate(`application_${user.status.toLowerCase()}` as any, { reason: user.rejectionReason || translate('not_specified') }),
+                    type: user.status
+                });
+                setLoginStep('status');
+                break;
+        }
+    };
+
+    const handleLoginOtpSubmit = () => {
+        if (otp !== '1234') return showToast('Invalid OTP.', true);
+        if (tempUser) login(tempUser);
+    };
+
+    const handleRegisterPhoneSubmit = () => {
+        if (!/^\d{10}$/.test(phone)) return showToast(translate('phone_placeholder'), true);
+        const existingUser = api.getEmployeeByPhone(phone);
+        if (existingUser && existingUser.status !== 'Rejected' && existingUser.status !== 'Expired') {
+            return showToast('Phone number already registered.', true);
+        }
+        const newRegData = { phone };
+        setRegData(newRegData);
+        api.saveRegProgress(newRegData);
+        showToast('OTP Sent! (Demo: 123456)');
+        setRegisterStep('otp');
+    };
+
+    const handleRegisterOtpSubmit = () => {
+        if (otp !== '123456') return showToast('Invalid OTP.', true);
+        const newRegData = { ...regData, phoneVerified: true };
+        setRegData(newRegData);
+        api.saveRegProgress(newRegData);
+        setRegisterStep('details');
+        startCamera('user');
+    };
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, field: 'license' | 'rc') => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            if(field === 'license') {
+                setRegData(prev => ({ ...prev, licenseFileName: file.name, licenseFileDataUrl: dataUrl }));
+            } else {
+                setRegData(prev => ({ ...prev, rcFileName: file.name, rcFileDataUrl: dataUrl }));
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
+    const handleCapturePhoto = () => {
+        if (livePhotoPreview) {
+            setLivePhotoPreview(null);
+            startCamera('user');
+        } else {
+            const dataUrl = captureFrame();
+            if (dataUrl) {
+                setLivePhotoPreview(dataUrl);
+                setRegData(prev => ({...prev, livePhoto: dataUrl}));
+                stopCamera();
+            }
+        }
+    };
+    
+    const handleRegistrationSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const formData = new FormData(e.target as HTMLFormElement);
+        const finalData: RegistrationData = {
+            ...regData,
+            fullName: formData.get('fullName') as string,
+            vehicleType: formData.get('vehicleType') as string,
+            vehicleNumber: formData.get('vehicleNumber') as string,
+            experience: formData.get('experience') as string,
+            emergencyContact: formData.get('emergencyContact') as string,
+        };
+
+        if (!finalData.fullName || !finalData.vehicleType || !finalData.vehicleNumber || !finalData.licenseFileDataUrl || !finalData.rcFileDataUrl || !finalData.livePhoto) {
+            return showToast('Please fill all required fields.', true);
+        }
+        
+        api.createEmployee(finalData);
+        showToast('Registration complete! Application under review.');
+        api.clearRegProgress();
+        setAuthView('login');
+        setLoginStep('phone');
+        setPhone('');
+        setOtp('');
+    };
+
+    const { videoRef: qrVideoRef, startCamera: startQrCamera, stopCamera: stopQrCamera } = useCamera();
+
+    const openQrScanner = () => {
+        setLoginStep('qrScanner');
+        startQrCamera('environment');
+    };
+
+    const closeQrScanner = () => {
+        stopQrCamera();
+        setLoginStep('onboarding');
+    };
+
+    const simulateQrScan = () => {
+        if(tempUser?.status === 'Accepted') {
+            const updatedUser = { ...tempUser, status: 'Active' as 'Active' };
+            api.updateEmployee(updatedUser);
+            stopQrCamera();
+            showToast(translate('qr_success'));
+            setTimeout(() => login(updatedUser), 1500);
+        }
+    };
+
+    const Header = () => (
+        <header className="bg-white shadow-sm">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center py-4">
+                    <div className="text-3xl font-bold text-green-700 italic">🌱 Farmfura</div>
+                    <div className="flex items-center space-x-4">
+                        <select
+                            id="login-language-switcher"
+                            className="block appearance-none bg-white border border-gray-300 hover:border-gray-500 px-4 py-2 pr-8 rounded-md shadow-sm text-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                            value={language}
+                            onChange={(e) => setLanguage(e.target.value)}
+                        >
+                            <option value="en">English</option>
+                            <option value="kn">ಕನ್ನಡ</option>
+                            <option value="hi">हिन्दी</option>
+                        </select>
+                        <a href="#" className="font-semibold text-gray-600 hover:text-green-700">{translate('back_to_portal')}</a>
+                    </div>
+                </div>
+            </div>
+        </header>
+    );
+
+    const renderLogin = () => {
+        switch (loginStep) {
+            case 'phone':
+                return (
+                    <div>
+                        <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">{translate('carrier_login')}</h2>
+                        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleLoginPhoneSubmit(); }}>
+                            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-3 border rounded-md" placeholder={translate('phone_placeholder')} required />
+                            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">{translate('send_otp_btn')}</button>
+                        </form>
+                    </div>
+                );
+            case 'otp':
+                return (
+                     <div>
+                         <h2 className="text-2xl font-bold text-center text-gray-800 mb-2">{translate('verify_phone_title')}</h2>
+                         <p className="text-center text-sm text-gray-600 mb-4">
+                            {translate('otp_sent_to')} <span className="font-bold">{phone}</span>.
+                        </p>
+                        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleLoginOtpSubmit(); }}>
+                            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full p-3 border rounded-md text-center tracking-widest" placeholder={translate('otp_placeholder')} />
+                            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">{translate('verify_login')}</button>
+                        </form>
+                         <div className="text-center mt-4">
+                            <button onClick={() => { setLoginStep('phone'); setOtp(''); }} className="text-sm text-blue-600 hover:underline">{translate('change_number')}</button>
+                        </div>
+                    </div>
+                );
+            case 'status':
+                return (
+                    <div className={`text-center p-4 rounded-md ${
+                        statusInfo.type === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800'
+                    }`}>
+                        <p>{statusInfo.message}</p>
+                        {(statusInfo.type === 'Rejected' || statusInfo.type === 'Expired') && (
+                            <button onClick={() => { setAuthView('register'); setRegisterStep('phone'); }} className="mt-4 w-full bg-blue-600 text-white font-bold py-2 rounded-md hover:bg-blue-700">{translate('register_again')}</button>
+                        )}
+                    </div>
+                );
+            case 'onboarding':
+                return (
+                    <div className="text-center">
+                         <h3 className="text-xl font-bold text-gray-800 mb-4">{translate('onboarding_title')}</h3>
+                         <div className="bg-green-50 border-l-4 border-green-500 text-green-800 p-4 rounded-r-lg">
+                             <p className="mb-2">{translate('visit_hub_message')}</p>
+                             <div className="font-semibold">
+                                 <p className="text-sm">{tempUser?.assignedHub}</p>
+                             </div>
+                         </div>
+                         <div className="mt-6">
+                             <p className="mt-2 text-gray-600 mb-4">{translate('scan_qr_prompt')}</p>
+                             <button onClick={openQrScanner} type="button" className="w-full bg-blue-600 text-white font-bold py-3 rounded-md hover:bg-blue-700 flex items-center justify-center space-x-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v1m6 11h-1m-1-6v1m-1-1h1m-1 6h1m-1-1v1M4 12h1m11 6v-1m-1 1h-1m6-1v-1m-1 1h-1M9 4v1M4 9h1M4 4l1 1m14 14l-1-1M4 15l1-1m14-1l-1 1M9 20v-1m6 1v-1m-1-16l-1 1M8 4l-1 1" /></svg>
+                                 <span>{translate('scan_qr_btn')}</span>
+                             </button>
+                         </div>
+                    </div>
+                );
+            case 'qrScanner':
+                return (
+                    <div>
+                         <h3 className="text-xl font-bold text-center text-gray-800 mb-4">{translate('scan_qr_title')}</h3>
+                         <div className="relative w-full aspect-square bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer" onClick={simulateQrScan}>
+                             <video ref={qrVideoRef} className="w-full h-full object-cover" autoPlay playsInline></video>
+                            <div className="absolute inset-0 flex items-center justify-center text-white opacity-50 text-sm">{translate('click_to_scan')}</div>
+                         </div>
+                         <button onClick={closeQrScanner} type="button" className="w-full mt-4 bg-gray-500 text-white font-bold py-3 rounded-md hover:bg-gray-600">{translate('cancel_scan')}</button>
+                    </div>
+                );
+        }
+    };
+    
+    const renderRegister = () => {
+        const handleBack = () => {
+            if (registerStep === 'otp') setRegisterStep('phone');
+            if (registerStep === 'details') {
+                stopCamera();
+                setRegisterStep('otp');
+            }
+        };
+
+        return (
+            <div>
+                 <div className="relative">
+                    {registerStep !== 'phone' && (
+                        <button onClick={handleBack} className="absolute top-0 left-0 text-gray-500 hover:text-gray-800">&larr; {translate('back_btn')}</button>
+                    )}
+                     <h2 className="text-2xl font-bold text-center text-gray-800 mb-6">{translate('carrier_registration')}</h2>
+                </div>
+                {registerStep === 'phone' && (
+                    <div className="pt-6">
+                        <p className="text-center text-sm text-gray-600 mb-4">{translate('reg_step1_prompt')}</p>
+                        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleRegisterPhoneSubmit(); }}>
+                            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full p-3 border rounded-md" placeholder={translate('phone_placeholder')} required />
+                            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">{translate('send_otp_btn')}</button>
+                        </form>
+                    </div>
+                )}
+                {registerStep === 'otp' && (
+                     <div className="pt-6">
+                        <p className="text-center text-sm text-gray-600 mb-4">
+                           {translate('otp_sent_to')} <span className="font-bold">{phone}</span>.
+                        </p>
+                        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleRegisterOtpSubmit(); }}>
+                            <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full p-3 border rounded-md text-center tracking-[0.5em]" placeholder={translate('otp_placeholder_6')} required />
+                            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">{translate('verify_otp_btn')}</button>
+                        </form>
+                    </div>
+                )}
+                {registerStep === 'details' && (
+                     <div className="pt-6">
+                        <form className="space-y-4" onSubmit={handleRegistrationSubmit}>
+                            <input type="text" name="fullName" className="w-full p-3 border rounded-md" placeholder={translate('name_as_per_license')} required />
+                            <input type="tel" value={regData.phone} className="w-full p-3 border bg-gray-100 rounded-md" readOnly />
+                            <input type="text" name="vehicleType" className="w-full p-3 border rounded-md" placeholder={translate('vehicle_type')} required />
+                            <input type="text" name="vehicleNumber" className="w-full p-3 border rounded-md" placeholder={translate('vehicle_number')} required />
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">{translate('upload_license')}</label>
+                                <div className="flex items-center space-x-2">
+                                    <input type="file" onChange={e => handleFileChange(e, 'license')} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" accept="image/*,.pdf" />
+                                    <div className="file-preview rounded-md flex items-center justify-center text-xs text-gray-500" style={{backgroundImage: regData.licenseFileDataUrl ? `url(${regData.licenseFileDataUrl})` : 'none'}}>{regData.licenseFileDataUrl ? '' : 'Preview'}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">{translate('upload_rc')}</label>
+                                <div className="flex items-center space-x-2">
+                                    <input type="file" onChange={e => handleFileChange(e, 'rc')} className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700 hover:file:bg-green-100" accept="image/*,.pdf" />
+                                    <div className="file-preview rounded-md flex items-center justify-center text-xs text-gray-500" style={{backgroundImage: regData.rcFileDataUrl ? `url(${regData.rcFileDataUrl})` : 'none'}}>{regData.rcFileDataUrl ? '' : 'Preview'}</div>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">{translate('prev_experience')}</label>
+                                <textarea name="experience" className="w-full p-2 border rounded-md" rows={3} placeholder={translate('experience_placeholder_delivery')}></textarea>
+                            </div>
+                             <div>
+                                <label className="text-sm font-medium text-gray-700">{translate('emergency_contact')}</label>
+                                <input type="tel" name="emergencyContact" className="w-full p-3 border rounded-md" placeholder={translate('phone_placeholder')} />
+                            </div>
+                             <div>
+                                <label className="text-sm font-medium text-gray-700">{translate('live_photo')}</label>
+                                <div className="mt-1 bg-gray-200 rounded-md flex items-center justify-center h-48 relative">
+                                    <video ref={videoRef} className={`w-full h-full rounded-md object-cover ${!livePhotoPreview && cameraStatus === 'running' ? '' : 'hidden'}`} autoPlay playsInline></video>
+                                    <canvas ref={canvasRef} className="hidden"></canvas>
+                                    {livePhotoPreview && <img src={livePhotoPreview} className="w-full h-full rounded-md object-cover" alt="Live" />}
+                                    {cameraStatus === 'permission' && (
+                                        <div className="text-gray-500 text-center p-4">
+                                            <p>{translate('allow_camera_access')}</p>
+                                            <button type="button" onClick={() => startCamera('user')} className="mt-2 bg-yellow-500 text-white text-sm font-bold py-2 px-3 rounded-md hover:bg-yellow-600">{translate('retry_camera')}</button>
+                                        </div>
+                                    )}
+                                </div>
+                                <button type="button" onClick={handleCapturePhoto} className="w-full mt-2 bg-blue-500 text-white text-sm font-bold py-2 px-3 rounded-md hover:bg-blue-600">{translate(livePhotoPreview ? 'retake_photo_btn' : 'capture_photo_btn')}</button>
+                            </div>
+                            <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">{translate('register_btn')}</button>
+                        </form>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
+    return (
+        <div className="min-h-screen bg-gray-50 flex flex-col">
+            <Header />
+            <main className="flex-grow flex items-center justify-center p-4">
+                <div className="w-full max-w-sm">
+                    {authView === 'login' ? (
+                        <div className="bg-white p-8 shadow-lg rounded-lg">
+                            {renderLogin()}
+                            <p className="text-center text-sm text-gray-600 mt-4">
+                                {translate('no_account')}{' '}
+                                <button onClick={() => { setAuthView('register'); setRegisterStep('phone'); }} className="font-semibold text-green-600 hover:text-green-800">{translate('register_link')}</button>
+                            </p>
+                        </div>
+                    ) : (
+                        <div className="bg-white p-8 shadow-lg rounded-lg">
+                            {renderRegister()}
+                            <p className="text-center text-sm text-gray-600 mt-4">
+                                {translate('has_account')}{' '}
+                                <button onClick={() => { setAuthView('login'); setLoginStep('phone'); stopCamera(); }} className="font-semibold text-green-600 hover:text-green-800">{translate('login_link')}</button>
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </main>
+        </div>
+    );
+};
+
+export default Auth;
+
+
+
+# ===== FILE: /components/MainApp.tsx =====
+
+import React, { useState, useContext, useCallback } from 'react';
+import { AuthContext, LanguageContext } from '../App';
+import DeliveriesTab from './HomeTab';
+import ProfileTab from './ProfileTab';
+import ScanTab from './ScanTab';
+import TransactionsTab from './TransactionsTab';
+import RewardsTab from './RewardsTab';
+
+type TabName = 'deliveries' | 'profile' | 'scan' | 'transactions' | 'rewards';
+
+const Header = () => {
+    const { currentUser, logout } = useContext(AuthContext);
+    const { language, setLanguage, translate } = useContext(LanguageContext);
+
+    return (
+         <header className="bg-white shadow-sm sticky top-0 z-50">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center py-4">
+                    <div className="text-3xl font-bold text-green-700 italic">🌱 Farmfura</div>
+                    <nav className="flex items-center space-x-2 md:space-x-6">
+                        <span className="font-semibold text-gray-700 hidden sm:block">{translate('welcome_user', { name: currentUser!.name.split(' ')[0] })}</span>
+                         <div className="relative pl-2 md:pl-4 md:border-l">
+                             <select 
+                                id="language-switcher"
+                                value={language}
+                                onChange={(e) => setLanguage(e.target.value)}
+                                className="block appearance-none w-full bg-white border border-gray-300 hover:border-gray-500 px-4 py-2 pr-8 rounded-md shadow-sm text-sm focus:outline-none focus:ring-green-500 focus:border-green-500"
+                              >
+                                <option value="en">English</option>
+                                <option value="kn">ಕನ್ನಡ</option>
+                                <option value="hi">हिन्दी</option>
+                            </select>
+                        </div>
+                        <button onClick={logout} className="font-semibold text-red-600 hover:text-red-800">{translate('nav_logout')}</button>
+                    </nav>
+                </div>
+            </div>
+        </header>
+    );
+};
+
+const BottomNav: React.FC<{ activeTab: TabName; onTabChange: (tab: TabName) => void }> = ({ activeTab, onTabChange }) => {
+    const { translate } = useContext(LanguageContext);
+
+    // FIX: Changed icon type from JSX.Element to React.ReactNode to resolve namespace error.
+    const NavButton: React.FC<{ tab: TabName; icon: React.ReactNode; label: string }> = ({ tab, icon, label }) => (
+         <button onClick={() => onTabChange(tab)} className={`flex flex-col items-center justify-center w-1/5 ${activeTab === tab ? 'text-green-600' : 'text-gray-500'}`}>
+            {icon}
+            <span className="text-xs">{label}</span>
+        </button>
+    );
+    
+    return (
+        <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-16 z-40">
+            <NavButton tab="deliveries" label={translate('nav_deliveries')} icon={<svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.125-.504 1.125-1.125V14.25m-17.25 4.5h10.5a1.125 1.125 0 001.125-1.125V6.75a1.125 1.125 0 00-1.125-1.125H3.375A1.125 1.125 0 002.25 6.75v10.5a1.125 1.125 0 001.125 1.125z" /></svg>} />
+            <NavButton tab="rewards" label={translate('nav_rewards')} icon={<svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0 0v12"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.36 6.64A9 9 0 016.64 18.36"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M18.36 18.36A9 9 0 016.64 6.64"></path></svg>} />
+            <button onClick={() => onTabChange('scan')} className="flex flex-col items-center justify-center w-1/5 -mt-8">
+                <div className="w-16 h-16 bg-yellow-400 rounded-2xl flex items-center justify-center text-black shadow-lg">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h-1m-1-6v1m-1-1h1m-1 6h1m-1-1v1M4 12h1m11 6v-1m-1 1h-1m6-1v-1m-1 1h-1M9 4v1M4 9h1M4 4l1 1m14 14l-1-1M4 15l1-1m14-1l-1 1M9 20v-1m6 1v-1m-1-16l-1 1M8 4l-1 1"></path></svg>
+                </div>
+            </button>
+            <NavButton tab="transactions" label={translate('nav_transactions')} icon={<svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>} />
+            <NavButton tab="profile" label={translate('nav_profile')} icon={<svg className="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>} />
+        </footer>
+    );
+};
+
+
+const MainApp: React.FC = () => {
+    const [activeTab, setActiveTab] = useState<TabName>('deliveries');
+
+    const handleTabChange = useCallback((tab: TabName) => {
+        setActiveTab(tab);
+    }, []);
+
+    const renderContent = () => {
+        switch (activeTab) {
+            case 'deliveries': return <DeliveriesTab />;
+            case 'profile': return <ProfileTab />;
+            case 'scan': return <ScanTab />;
+            case 'transactions': return <TransactionsTab />;
+            case 'rewards': return <RewardsTab />;
+            default: return <DeliveriesTab />;
+        }
+    }
+
+    return (
+        <div className="flex flex-col min-h-screen">
+            <Header />
+            <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow pb-24">
+                {renderContent()}
+            </main>
+            <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
+        </div>
+    );
+};
+
+export default MainApp;
+
+
+# ===== FILE: /components/HomeTab.tsx =====
+
+import React, { useState, useEffect, useContext } from 'react';
+import { Order } from '../types';
+import { api } from '../services/api';
+import { AuthContext, LanguageContext, ToastContext } from '../App';
+import Modal from './Modal';
+
+type HomeSubTab = 'available' | 'pickups';
+
+const JobCard: React.FC<{ order: Order; onAccept: (order: Order) => void; isAccepted?: boolean; onDrop: (order: Order) => void; }> = ({ order, onAccept, isAccepted, onDrop }) => {
+    const { translate } = useContext(LanguageContext);
+    return (
+        <div className="bg-white p-4 rounded-lg shadow-sm">
+            <div className="flex justify-between items-start">
+                <div>
+                    <p className="font-bold text-lg">Order #{order.id}</p>
+                    <p className="text-sm text-gray-500">{order.items}</p>
+                </div>
+                <div className="text-right">
+                    <p className="font-bold text-xl text-green-600">₹{order.payout}</p>
+                    <p className="text-xs text-gray-500">{translate('payout')}</p>
+                </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t grid grid-cols-2 gap-4 text-sm">
+                <div>
+                    <p className="font-medium text-gray-500">{translate('pickup_from')}</p>
+                    <p className="font-semibold text-gray-800">{order.assignedShopName}</p>
+                </div>
+                <div>
+                    <p className="font-medium text-gray-500">{translate('deliver_to')}</p>
+                    <p className="font-semibold text-gray-800">{order.customer.name}</p>
+                    <p className="text-gray-600">{order.customer.address}</p>
+                </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t">
+                {isAccepted ? (
+                    <button onClick={() => onDrop(order)} className="w-full bg-red-500 text-white font-bold py-2 rounded-md hover:bg-red-600">{translate('drop_job_btn')}</button>
+                ) : (
+                    <button onClick={() => onAccept(order)} className="w-full bg-blue-600 text-white font-bold py-2 rounded-md hover:bg-blue-700">{translate('accept_job_btn')}</button>
+                )}
+            </div>
+        </div>
+    );
+};
+
+
+const DeliveriesTab: React.FC = () => {
+    const { currentUser } = useContext(AuthContext);
+    const { translate } = useContext(LanguageContext);
+    const showToast = useContext(ToastContext);
+
+    const [subTab, setSubTab] = useState<HomeSubTab>('available');
+    const [availableJobs, setAvailableJobs] = useState<Order[]>([]);
+    const [myPickups, setMyPickups] = useState<Order[]>([]);
+    const [selectedJob, setSelectedJob] = useState<Order | null>(null);
+    const [isAcceptModalOpen, setAcceptModalOpen] = useState(false);
+    const [isDropModalOpen, setDropModalOpen] = useState(false);
+
+    const fetchData = () => {
+        setAvailableJobs(api.getAvailableOrders());
+        if (currentUser) {
+            setMyPickups(api.getAcceptedOrders(currentUser.id));
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, [currentUser]);
+
+    const handleAcceptClick = (order: Order) => {
+        setSelectedJob(order);
+        setAcceptModalOpen(true);
+    };
+
+    const handleDropClick = (order: Order) => {
+        setSelectedJob(order);
+        setDropModalOpen(true);
+    };
+
+    const confirmAcceptJob = () => {
+        if (selectedJob && currentUser) {
+            const updatedOrder: Order = { ...selectedJob, status: 'accepted_by_carrier', carrierId: currentUser.id };
+            api.updateOrder(updatedOrder);
+            showToast(translate('job_accepted_success'));
+            fetchData();
+        }
+        setAcceptModalOpen(false);
+        setSelectedJob(null);
+    };
+
+    const confirmDropJob = () => {
+         if (selectedJob) {
+            const updatedOrder: Order = { ...selectedJob, status: 'ready', carrierId: undefined };
+            api.updateOrder(updatedOrder);
+            showToast(translate('job_dropped_success'));
+            fetchData();
+        }
+        setDropModalOpen(false);
+        setSelectedJob(null);
+    };
+
+
+    const TabButton: React.FC<{ tab: HomeSubTab; label: string; }> = ({ tab, label }) => (
+        <button
+            onClick={() => setSubTab(tab)}
+            className={`pb-2 font-semibold border-b-2 ${subTab === tab ? 'text-blue-700 border-blue-700' : 'text-gray-500 border-transparent'}`}
+        >
+            {label}
+        </button>
+    );
+
+    return (
+        <div>
+            <div className="border-b-2 flex space-x-8 mb-4">
+                <TabButton tab="available" label={translate('available_jobs')} />
+                <TabButton tab="pickups" label={translate('my_pickups')} />
+            </div>
+
+            <div className="space-y-4">
+                {subTab === 'available' && (
+                    availableJobs.length > 0 ? (
+                        availableJobs.map(order => <JobCard key={order.id} order={order} onAccept={handleAcceptClick} onDrop={handleDropClick} />)
+                    ) : (
+                        <p className="text-center text-gray-500 pt-8">{translate('no_available_jobs')}</p>
+                    )
+                )}
+
+                {subTab === 'pickups' && (
+                    myPickups.length > 0 ? (
+                        myPickups.map(order => <JobCard key={order.id} order={order} isAccepted onAccept={handleAcceptClick} onDrop={handleDropClick} />)
+                    ) : (
+                        <p className="text-center text-gray-500 pt-8">{translate('no_active_pickups')}</p>
+                    )
+                )}
+            </div>
+
+            <Modal
+                isOpen={isAcceptModalOpen}
+                onClose={() => setAcceptModalOpen(false)}
+                title={translate('confirm_job_title')}
+            >
+                <div>
+                    <p>{translate('job_summary')}</p>
+                    {selectedJob && (
+                        <div className="mt-2 p-3 bg-gray-100 rounded-md">
+                            <p><span className="font-semibold">Order:</span> #{selectedJob.id}</p>
+                            <p><span className="font-semibold">From:</span> {selectedJob.assignedShopName}</p>
+                            <p><span className="font-semibold">To:</span> {selectedJob.customer.name}, {selectedJob.customer.address}</p>
+                            <p><span className="font-semibold">Payout:</span> ₹{selectedJob.payout}</p>
+                        </div>
+                    )}
+                    <div className="flex justify-end space-x-3 mt-4">
+                        <button onClick={() => setAcceptModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">{translate('cancel')}</button>
+                        <button onClick={confirmAcceptJob} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">{translate('confirm')}</button>
+                    </div>
+                </div>
+            </Modal>
+            
+            <Modal
+                isOpen={isDropModalOpen}
+                onClose={() => setDropModalOpen(false)}
+                title={translate('confirm_drop_title')}
+            >
+                 <div>
+                    <p>{translate('confirm_drop_body')}</p>
+                    <div className="flex justify-end space-x-3 mt-4">
+                        <button onClick={() => setDropModalOpen(false)} className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">{translate('no')}</button>
+                        <button onClick={confirmDropJob} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700">{translate('yes_drop')}</button>
+                    </div>
+                </div>
+            </Modal>
+        </div>
+    );
+};
+
+export default DeliveriesTab;
+
+
+# ===== FILE: /components/ProfileTab.tsx =====
+
+import React, { useState, useContext, useMemo, useEffect } from 'react';
+import { AuthContext, LanguageContext, ToastContext } from '../App';
+import { api } from '../services/api';
+import { Job } from '../types';
+import Modal from './Modal';
+
+const ProfileTab: React.FC = () => {
+    const { currentUser, updateUser } = useContext(AuthContext);
+    const { translate } = useContext(LanguageContext);
+    const showToast = useContext(ToastContext);
+    
+    const [view, setView] = useState<'main' | 'bank'>('main');
+    const [isWithdrawModalOpen, setWithdrawModalOpen] = useState(false);
+    const [completedJobs, setCompletedJobs] = useState<Job[]>([]);
+
+    useEffect(() => {
+        if (currentUser) {
+            setCompletedJobs(api.getCompletedJobs(currentUser.id));
+        }
+    }, [currentUser]);
+
+    const totalEarnings = useMemo(() => {
+        return completedJobs.reduce((sum, job) => sum + job.payout, 0);
+    }, [completedJobs]);
+
+    const [bankDetails, setBankDetails] = useState({
+        accountNumber: currentUser?.bankDetails?.accountNumber || '',
+        ifsc: currentUser?.bankDetails?.ifsc || '',
+        branch: currentUser?.bankDetails?.branch || '',
+        bank: currentUser?.bankDetails?.bank || '',
+    });
+
+    const handleBankDetailsSave = () => {
+        if (!bankDetails.accountNumber || !bankDetails.ifsc) {
+            showToast(translate('bank_account_number') + " and " + translate('ifsc_code') + " are required.", true);
+            return;
+        }
+        const updatedUser = { ...currentUser!, bankDetails };
+        api.updateEmployee(updatedUser);
+        updateUser(updatedUser);
+        showToast(translate('bank_details_saved'));
+        setView('main');
+    };
+
+    const handleWithdrawClick = () => {
+        if (!currentUser?.bankDetails?.accountNumber || !currentUser?.bankDetails?.ifsc) {
+            showToast(translate('no_bank_details_prompt'), true);
+            setView('bank');
+            return;
+        }
+        setWithdrawModalOpen(true);
+    };
+
+    const confirmWithdrawal = () => {
+        if (currentUser) {
+            const updatedUser = api.withdrawFromWallet(currentUser.id);
+            if (updatedUser) {
+                updateUser(updatedUser);
+                showToast(translate('withdrawal_success'));
+            }
+        }
+        setWithdrawModalOpen(false);
+    };
+
+    if (view === 'bank') {
+        return (
+             <div>
+                <div className="mb-4">
+                    <button onClick={() => setView('main')} className="text-lg font-semibold text-gray-700 hover:text-gray-900 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        {translate('bank_details')}
+                    </button>
+                </div>
+                <div className="bg-white p-6 rounded-lg shadow-sm">
+                    <form className="space-y-4" onSubmit={e => {e.preventDefault(); handleBankDetailsSave();}}>
+                        <div>
+                            <label htmlFor="accountNumber" className="text-sm font-medium text-gray-700">{translate('bank_account_number')}</label>
+                            <input id="accountNumber" type="text" value={bankDetails.accountNumber} onChange={e => setBankDetails({...bankDetails, accountNumber: e.target.value})} className="w-full mt-1 p-3 border rounded-md" required />
+                        </div>
+                        <div>
+                            <label htmlFor="ifsc" className="text-sm font-medium text-gray-700">{translate('ifsc_code')}</label>
+                            <input id="ifsc" type="text" value={bankDetails.ifsc} onChange={e => setBankDetails({...bankDetails, ifsc: e.target.value.toUpperCase()})} className="w-full mt-1 p-3 border rounded-md" required />
+                        </div>
+                        <div>
+                            <label htmlFor="branch" className="text-sm font-medium text-gray-700">{translate('branch_name')}</label>
+                            <input id="branch" type="text" value={bankDetails.branch} onChange={e => setBankDetails({...bankDetails, branch: e.target.value})} className="w-full mt-1 p-3 border rounded-md" />
+                        </div>
+                        <div>
+                            <label htmlFor="bankName" className="text-sm font-medium text-gray-700">{translate('bank_name')}</label>
+                            <input id="bankName" type="text" value={bankDetails.bank} onChange={e => setBankDetails({...bankDetails, bank: e.target.value})} className="w-full mt-1 p-3 border rounded-md" />
+                        </div>
+                        <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">{translate('save_details')}</button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-6">
+            <h2 className="text-2xl font-bold text-gray-800">{translate('profile_title')}</h2>
+            
+            <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
+                <h3 className="text-lg font-bold border-b pb-2">{translate('wallet')}</h3>
+                <div>
+                    <p className="text-sm text-gray-500">{translate('total_earnings')}</p>
+                    <p className="text-2xl font-bold text-gray-800">₹{totalEarnings.toFixed(2)}</p>
+                </div>
+                <div className="pt-4 border-t">
+                     <div className="flex justify-between items-center">
+                        <p className="text-sm text-gray-500">{translate('available_balance')}</p>
+                        <p className="text-2xl font-bold text-green-600">₹{(currentUser?.availableBalance || 0).toFixed(2)}</p>
+                    </div>
+                    <button 
+                        onClick={handleWithdrawClick}
+                        disabled={(currentUser?.availableBalance || 0) === 0}
+                        className="w-full mt-4 bg-green-600 text-white font-bold py-2 rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed">
+                        {translate('withdraw')}
+                    </button>
+                </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm space-y-4">
+                 <div>
+                     <p className="text-sm font-medium text-gray-500">Name</p>
+                     <p className="font-semibold text-lg text-gray-800">{currentUser?.name}</p>
+                 </div>
+                 <div>
+                     <p className="text-sm font-medium text-gray-500">Phone</p>
+                     <p className="font-semibold text-lg text-gray-800">{currentUser?.phone}</p>
+                 </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-lg shadow-sm">
+                <h3 className="text-lg font-bold border-b pb-2 mb-4">{translate('vehicle_details')}</h3>
+                <div className="space-y-4">
+                    <div>
+                         <p className="text-sm font-medium text-gray-500">{translate('vehicle_type')}</p>
+                         <p className="font-semibold text-lg text-gray-800">{currentUser?.vehicleType}</p>
+                     </div>
+                     <div>
+                         <p className="text-sm font-medium text-gray-500">{translate('vehicle_number')}</p>
+                         <p className="font-semibold text-lg text-gray-800">{currentUser?.vehicleNumber}</p>
+                     </div>
+                </div>
+            </div>
+
+            <button onClick={() => setView('bank')} className="bg-white p-4 rounded-lg shadow-sm w-full text-left flex justify-between items-center hover:bg-gray-50 transition-colors">
+                <div>
+                    <p className="font-bold text-gray-800">{translate('bank_details')}</p>
+                    <p className="text-sm text-gray-500">{translate('manage_bank_details')}</p>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+            </button>
+
+             <div className="bg-white p-4 rounded-lg shadow-sm">
+                 <h2 className="text-lg font-bold mb-4 border-b pb-2">{translate('help_support')}</h2>
+                 <div className="space-y-4">
+                    <div>
+                        <p className="font-semibold text-gray-800">{translate('faq1_q')}</p>
+                        <p className="text-sm text-gray-600 mt-1">{translate('faq1_a')}</p>
+                    </div>
+                    <div className="border-t pt-4">
+                        <p className="font-semibold text-gray-800">{translate('faq2_q')}</p>
+                        <p className="text-sm text-gray-600 mt-1">{translate('faq2_a')}</p>
+                    </div>
+                    <div className="border-t pt-4">
+                        <p className="font-semibold text-gray-800">{translate('faq3_q')}</p>
+                        <p className="text-sm text-gray-600 mt-1">{translate('faq3_a')}</p>
+                    </div>
+                    <div className="border-t pt-4">
+                         <a href="#" className="text-blue-600 hover:underline font-semibold">{translate('contact_support')}</a>
+                    </div>
+                 </div>
+             </div>
+
+             <Modal
+                isOpen={isWithdrawModalOpen}
+                onClose={() => setWithdrawModalOpen(false)}
+                title={translate('withdraw_confirmation_title')}
+            >
+                <div>
+                    <p>{translate('withdraw_confirmation_body', { amount: `₹${(currentUser?.availableBalance || 0).toFixed(2)}` })}</p>
+                    {currentUser?.bankDetails &&
+                        <div className="mt-2 p-3 bg-gray-100 rounded-md text-sm">
+                            <p><span className="font-semibold">{translate('bank_name')}:</span> {currentUser.bankDetails.bank}</p>
+                            <p><span className="font-semibold">{translate('bank_account_number')}:</span> ...{currentUser.bankDetails.accountNumber.slice(-4)}</p>
+                        </div>
+                    }
+                    <div className="flex justify-end space-x-3 mt-4">
+                        <button onClick={() => setWithdrawModalOpen(false)} className="px-4 py-2 bg-gray-200 font-bold rounded-md hover:bg-gray-300">{translate('cancel')}</button>
+                        <button onClick={confirmWithdrawal} className="px-4 py-2 bg-green-600 text-white font-bold rounded-md hover:bg-green-700">{translate('confirm')}</button>
+                    </div>
+                </div>
+            </Modal>
+        </div>
+    );
+};
+
+export default ProfileTab;
+
+
+# ===== FILE: /components/ScanTab.tsx =====
+
+
+import React, { useEffect, useState, useContext } from 'react';
+import { useCamera } from '../hooks/useCamera';
+import { LanguageContext } from '../App';
+
+const ScanTab: React.FC = () => {
+    const { translate } = useContext(LanguageContext);
+    const { videoRef, status, startCamera, stopCamera } = useCamera();
+    const [facingMode, setFacingMode] = useState<'environment' | 'user'>('environment');
+
+    useEffect(() => {
+        startCamera(facingMode);
+        return () => {
+            stopCamera();
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [facingMode]);
+
+    const switchCamera = () => {
+        setFacingMode(prev => (prev === 'user' ? 'environment' : 'user'));
+    };
+
+    return (
+        <div>
+            <h2 className="text-xl font-bold mb-4">{translate('scan_title')}</h2>
+            <div id="scan-video-container" className="relative w-full bg-gray-800 rounded-lg overflow-hidden flex items-center justify-center min-h-[300px] md:min-h-[450px]">
+                <video ref={videoRef} className={`w-full h-full object-cover ${status === 'running' ? '' : 'hidden'}`} autoPlay playsInline></video>
+                
+                {status === 'starting' && <div className="text-white text-center p-4">{translate('starting_camera')}</div>}
+                {status === 'permission' && (
+                    <div className="text-white text-center p-4">
+                         <p>{translate('allow_camera_access')}</p>
+                         <button onClick={() => startCamera(facingMode)} className="mt-2 bg-yellow-500 text-white text-sm font-bold py-2 px-3 rounded-md hover:bg-yellow-600">{translate('retry_camera')}</button>
+                     </div>
+                )}
+                {status === 'error' && <div className="text-red-400 text-center p-4">{translate('camera_error')}</div>}
+            </div>
+            <button onClick={switchCamera} type="button" className="w-full mt-4 bg-blue-500 text-white font-bold py-3 rounded-md hover:bg-blue-600">{translate('switch_camera')}</button>
+        </div>
+    );
+};
+
+export default ScanTab;
+
+
+
+# ===== FILE: /components/TransactionsTab.tsx =====
+
+
+import React, { useState, useEffect, useContext } from 'react';
+import { Job } from '../types';
+import { api } from '../services/api';
+import { AuthContext, LanguageContext } from '../App';
+
+const TransactionsTab: React.FC = () => {
+    const { currentUser } = useContext(AuthContext);
+    const { translate, language } = useContext(LanguageContext);
+    const [jobs, setJobs] = useState<Job[]>([]);
+
+    useEffect(() => {
+        if (currentUser) {
+            const completedJobs = api.getCompletedJobs(currentUser.id);
+            const sortedJobs = completedJobs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            setJobs(sortedJobs);
+        }
+    }, [currentUser]);
+
+    const formatDate = (dateString: string) => {
+        return new Date(dateString).toLocaleDateString(language, {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        });
+    };
+
+    return (
+        <div>
+            <h2 className="text-xl font-bold mb-4">{translate('transaction_history')}</h2>
+            <div className="space-y-3">
+                {jobs.length > 0 ? (
+                    jobs.map(job => (
+                        <div key={job.id} className="bg-white p-4 rounded-lg shadow-sm">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <p className="font-semibold">Order #{job.orderId}</p>
+                                    <p className="text-sm text-gray-500">{formatDate(job.date)}</p>
+                                </div>
+                                <p className="font-bold text-green-600">+ ₹{job.payout}</p>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <p className="text-center text-gray-500 pt-8">{translate('no_transactions')}</p>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default TransactionsTab;
+
+
+
+# ===== FILE: /components/RewardsTab.tsx =====
+
+
+import React, { useContext } from 'react';
+import { LanguageContext } from '../App';
+
+const RewardsTab: React.FC = () => {
+    const { translate } = useContext(LanguageContext);
+
+    return (
+        <div>
+            <h2 className="text-xl font-bold mb-4">{translate('rewards_title')}</h2>
+            <div className="bg-white p-6 rounded-lg shadow-sm text-center mb-6">
+                <p className="text-lg text-gray-500">{translate('rewards_points')}</p>
+                <p className="text-5xl font-bold text-yellow-500">850</p>
+            </div>
+            <h3 className="text-lg font-semibold mb-4">{translate('reward_tiers')}</h3>
+            <div className="space-y-3">
+                <div className="bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-800">
+                    <p className="font-bold text-yellow-800">{translate('tier_bronze')}</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-sm opacity-60">
+                    <p className="font-bold text-gray-500">{translate('tier_silver')}</p>
+                </div>
+                <div className="bg-white p-4 rounded-lg shadow-sm opacity-60">
+                    <p className="font-bold text-gray-500">{translate('tier_gold')}</p>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default RewardsTab;
+
+
+
+# ===== FILE: /components/Toast.tsx =====
+
+
+import React, { useEffect, useState } from 'react';
+
+interface ToastProps {
+  message: string;
+  isError?: boolean;
+  onClose: () => void;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, isError = false, onClose }) => {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    setVisible(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      // Allow time for fade-out animation before calling onClose
+      setTimeout(onClose, 300);
+    }, 2700);
+    
+    return () => clearTimeout(timer);
+  }, [message, onClose]);
+
+  const bgColor = isError ? 'bg-red-600' : 'bg-green-600';
+
+  return (
+    <div
+      className={`fixed bottom-20 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 z-[150] ${bgColor} ${visible ? 'opacity-100' : 'opacity-0'}`}
+    >
+      {message}
+    </div>
+  );
+};
+
+export default Toast;
+
+
+
+# ===== FILE: /components/Modal.tsx =====
+
+
+import React from 'react';
+
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
+
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[120] transition-opacity duration-300 ease-in-out"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white p-6 rounded-lg shadow-xl w-11/12 max-w-md mx-auto"
+        onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside modal
+      >
+        <h3 className="text-xl font-bold mb-4">{title}</h3>
+        <div>{children}</div>
+      </div>
+    </div>
+  );
+};
+
+export default Modal;

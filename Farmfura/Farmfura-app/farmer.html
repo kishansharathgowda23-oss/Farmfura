@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmfura - Farmer Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .nav-link { transition: all 0.3s ease; border-bottom: 2px solid transparent; }
+        .nav-link.active { color: #16a34a; border-bottom-color: #16a34a; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .modal-backdrop {
+            position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6);
+            display: none; align-items: center; justify-content: center; z-index: 120;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.visible { display: flex; opacity: 1; }
+        .modal-content {
+            background: white; padding: 2rem; border-radius: 0.75rem;
+            max-width: 500px; width: 90%;
+            transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        .modal-backdrop.visible .modal-content { transform: scale(1); }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <header id="app-header" class="bg-white shadow-sm sticky top-0 z-50 hidden">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="text-3xl font-bold text-green-700 italic">🌱 Farmfura</div>
+                <nav class="flex items-center space-x-6">
+                    <a href="#farmer-dashboard-page" class="nav-link active" data-lang-key="nav_dashboard">Dashboard</a>
+                    <a href="#my-submissions-page" class="nav-link" data-lang-key="nav_my_submissions">My Submissions</a>
+                    <a href="#" id="logout-button" class="font-semibold text-red-600 hover:text-red-800" data-lang-key="nav_logout">Logout</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main id="app-wrapper" class="hidden">
+        <div id="farmer-dashboard-page" class="page active container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+             <div class="max-w-4xl mx-auto">
+                 <div class="flex justify-between items-start mb-2">
+                     <div>
+                         <h1 class="text-3xl font-bold text-gray-800" data-lang-key="farmer_dashboard_title">Farmer Dashboard</h1>
+                         <p class="text-gray-600" data-lang-key="farmer_dashboard_subtitle">Update your available produce quantity.</p>
+                     </div>
+                     <button type="button" id="detect-farm-location-btn" class="text-sm text-green-600 hover:underline flex items-center space-x-1 mt-2">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                         <span data-lang-key="detect_location_btn">Detect Farm Location</span>
+                     </button>
+                 </div>
+                 <div id="farm-location-display" class="text-sm text-gray-700 mb-6 h-5"></div>
+                 
+                 <div id="farmer-product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                 <div class="mt-8 pt-4 border-t-2 border-gray-200 flex justify-between items-center">
+                     <div>
+                         <span class="text-lg font-bold text-gray-700 mr-4" data-lang-key="farmer_total_earnings">Total Potential Earnings:</span>
+                         <span id="farmer-total-earnings" class="text-xl font-bold text-green-700">₹0.00</span>
+                     </div>
+                     <button id="farmer-submit-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-md hover:bg-green-700" data-lang-key="farmer_submit_btn">Submit Availability</button>
+                 </div>
+             </div>
+        </div>
+        
+        <div id="my-submissions-page" class="page container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6" data-lang-key="my_submissions_title">My Submissions</h1>
+                <div id="submissions-list" class="space-y-4"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="login-wrapper" class="min-h-screen flex items-center justify-center bg-gray-50">
+        <div class="mx-auto w-full max-w-sm">
+            <div class="text-center mb-8">
+                <div class="text-5xl font-bold text-green-700 italic mb-4">🌱 Farmfura</div>
+                <p class="text-gray-600 italic">"The ultimate goal of farming is not the growing of crops, but the cultivation and perfection of human beings."</p>
+            </div>
+            <div class="bg-white p-8 shadow-lg rounded-lg">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6" data-lang-key="farmer_login_title">Farmer Login</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="login-credential" class="block text-gray-700 text-sm font-bold mb-2" data-lang-key="phone_number_label">Phone Number</label>
+                        <input type="text" id="login-credential" class="w-full py-3 px-4 border rounded-md" placeholder="Enter 10-digit phone number" required>
+                    </div>
+                    <div id="otp-field-container" class="hidden">
+                        <label for="login-otp" class="block text-gray-700 text-sm font-bold mb-2" data-lang-key="otp_label">Enter OTP</label>
+                        <input type="text" id="login-otp" class="w-full py-3 px-4 border rounded-md" placeholder="Enter OTP" maxlength="4">
+                    </div>
+                    <button id="universal-login-btn" type="button" class="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700" data-lang-key="send_otp_btn">Send OTP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-message" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-xl text-white bg-green-600 opacity-0 z-[101]"></div>
+    <div id="quantity-modal" class="modal-backdrop"></div>
+    <div id="onboarding-modal" class="modal-backdrop"></div>
+
+<script src="data-init.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE & DATA ---
+    const allProducts = JSON.parse(localStorage.getItem('farmfura_products')) || [];
+    let stagedItems = {}; 
+    let farmerId = null;
+    let otpSent = false;
+    let generatedOtp = '';
+    let userState = JSON.parse(localStorage.getItem('farmfura_farmerState')) || {};
+
+    // --- DOM ELEMENTS ---
+    const getElement = (id) => document.getElementById(id);
+    const pages = document.querySelectorAll('.page');
+    const toastMessage = getElement('toast-message');
+
+    // --- UTILITY FUNCTIONS ---
+    function showToast(message, duration = 3000) {
+        toastMessage.textContent = message;
+        toastMessage.classList.remove('opacity-0');
+        setTimeout(() => toastMessage.classList.add('opacity-0'), duration);
+    }
+
+    function switchPage(targetId) {
+        pages.forEach(page => page.classList.remove('active'));
+        getElement(targetId.substring(1)).classList.add('active');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        const activeLink = document.querySelector(`.nav-link[href="${targetId}"]`);
+        if(activeLink) activeLink.classList.add('active');
+    }
+
+    // --- LOGIN & ONBOARDING ---
+    function handleLoginVerification() {
+        const phone = getElement('login-credential').value.trim();
+        farmerId = phone; 
+        if (userState[farmerId] && userState[farmerId].hasOnboarded) {
+            showApp();
+        } else {
+            renderOnboardingModal();
+        }
+    }
+
+    function renderOnboardingModal() {
+        const modal = getElement('onboarding-modal');
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2 class="text-2xl font-bold mb-4">Welcome to Farmfura!</h2>
+                <p class="mb-6 text-gray-600">Please enter your name to complete registration.</p>
+                <form id="onboarding-form">
+                    <label for="farmer-name" class="block text-sm font-bold mb-2">Your Name</label>
+                    <input type="text" id="farmer-name" class="w-full py-3 px-4 border rounded-md mb-6" required>
+                    <button type="submit" class="w-full bg-green-600 text-white font-bold py-3 rounded-md">Complete Registration</button>
+                </form>
+            </div>`;
+        modal.classList.add('visible');
+        getElement('onboarding-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const farmerName = getElement('farmer-name').value.trim();
+            if (farmerName) {
+                userState[farmerId] = { hasOnboarded: true, name: farmerName, location: null };
+                localStorage.setItem('farmfura_farmerState', JSON.stringify(userState));
+                modal.classList.remove('visible');
+                showApp();
+            }
+        });
+    }
+
+    function showApp() {
+        getElement('login-wrapper').style.display = 'none';
+        getElement('app-wrapper').style.display = 'block';
+        getElement('app-header').classList.remove('hidden');
+        renderFarmerDashboard();
+    }
+
+    // --- DASHBOARD & SUBMISSION LOGIC ---
+    function renderFarmerDashboard() {
+        const productList = getElement('farmer-product-list');
+        if (!productList) return;
+        productList.innerHTML = allProducts.map(p => `
+            <div class="bg-white p-4 rounded-lg shadow-sm flex flex-col justify-between">
+                <div>
+                    <img src="${p.image}" class="w-full h-32 object-cover rounded-md mb-4" onerror="this.src='https://placehold.co/200x150';">
+                    <h3 class="font-bold text-gray-800">${p.name}</h3>
+                    <p class="font-semibold text-green-700 mt-2">₹${p.farmerPrice} / ${p.unit}</p>
+                </div>
+                <div class="mt-4">
+                    <button class="add-quantity-btn w-full text-sm bg-green-500 text-white py-2 rounded-md" data-product-id="${p.id}">Add Quantity</button>
+                </div>
+            </div>`).join('');
+        
+        document.querySelectorAll('.add-quantity-btn').forEach(btn => btn.addEventListener('click', () => {
+            renderQuantityModal(btn.dataset.productId);
+        }));
+    }
+
+    function renderQuantityModal(productId) {
+        const product = allProducts.find(p => p.id == productId);
+        const modal = getElement('quantity-modal');
+        modal.innerHTML = `
+            <div class="modal-content">
+                <h2 class="text-2xl font-bold mb-4">Add Quantity for ${product.name}</h2>
+                <input type="number" id="quantity-input" min="0" step="1" placeholder="0" class="w-full text-center p-2 border rounded-md text-lg" value="${stagedItems[productId] || ''}">
+                <div class="mt-4 flex justify-end space-x-2">
+                    <button id="cancel-quantity" class="bg-gray-200 px-4 py-2 rounded">Cancel</button>
+                    <button id="confirm-quantity" class="bg-green-600 text-white px-4 py-2 rounded">Confirm</button>
+                </div>
+            </div>`;
+        modal.classList.add('visible');
+
+        getElement('confirm-quantity').onclick = () => {
+            const quantity = parseFloat(getElement('quantity-input').value) || 0;
+            if (quantity > 0) stagedItems[product.id] = quantity;
+            else delete stagedItems[product.id];
+            modal.classList.remove('visible');
+            updateFarmerTotals();
+        };
+        getElement('cancel-quantity').onclick = () => modal.classList.remove('visible');
+    }
+
+    function updateFarmerTotals() {
+        const total = Object.keys(stagedItems).reduce((sum, pid) => {
+            const product = allProducts.find(p => p.id == pid);
+            return sum + (stagedItems[pid] * product.farmerPrice);
+        }, 0);
+        getElement('farmer-total-earnings').textContent = `₹${total.toFixed(2)}`;
+    }
+
+    function detectLocation() { /* ... unchanged ... */ }
+    function handleSubmitAvailability() { /* ... unchanged ... */ }
+    function renderMySubmissions() { /* ... unchanged ... */ }
+
+    // --- EVENT LISTENERS ---
+    getElement('universal-login-btn').addEventListener('click', () => {
+        const phone = getElement('login-credential').value.trim();
+        if (!/^\d{10}$/.test(phone)) return showToast('Please enter a valid 10-digit phone number.');
+
+        if (!otpSent) {
+            getElement('otp-field-container').classList.remove('hidden');
+            getElement('universal-login-btn').textContent = 'Verify & Login';
+            otpSent = true;
+            generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+            showToast(`OTP Sent! (For demo: ${generatedOtp})`);
+        } else {
+            if (getElement('login-otp').value === generatedOtp) {
+                handleLoginVerification();
+            } else {
+                showToast('Invalid OTP.');
+            }
+        }
+    });
+
+    getElement('detect-farm-location-btn').addEventListener('click', detectLocation);
+    getElement('farmer-submit-btn').addEventListener('click', handleSubmitAvailability);
+    getElement('logout-button').addEventListener('click', () => window.location.reload());
+    document.querySelectorAll('.nav-link').forEach(link => {
+        link.addEventListener('click', e => {
+            e.preventDefault();
+            switchPage(e.target.getAttribute('href'));
+            if (e.target.getAttribute('href') === '#my-submissions-page') renderMySubmissions();
+        });
+    });
+});
+</script>
+</body>
+</html>

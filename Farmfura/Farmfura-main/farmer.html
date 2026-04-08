@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmfura - Farmer Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .page { display: none; }
+        .page.active { display: block; }
+        .nav-link { transition: all 0.3s ease; border-bottom: 2px solid transparent; }
+        .nav-link.active { color: #16a34a; border-bottom-color: #16a34a; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+        .modal-backdrop {
+            position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.6);
+            display: none; align-items: center; justify-content: center; z-index: 120;
+            opacity: 0; transition: opacity 0.3s ease;
+        }
+        .modal-backdrop.visible { display: flex; opacity: 1; }
+        .modal-content {
+            background: white; padding: 2rem; border-radius: 0.75rem;
+            max-width: 500px; width: 90%;
+            transform: scale(0.95); transition: transform 0.3s ease;
+        }
+        .modal-backdrop.visible .modal-content { transform: scale(1); }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <header id="app-header" class="bg-white shadow-sm sticky top-0 z-50 hidden">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="text-3xl font-bold text-green-700 italic">🌱 Farmfura</div>
+                <nav class="flex items-center space-x-6">
+                    <a href="#farmer-dashboard-page" class="nav-link active">Dashboard</a>
+                    <a href="#my-submissions-page" class="nav-link">My Submissions</a>
+                    <a href="#" id="logout-button" class="font-semibold text-red-600 hover:text-red-800">Logout</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <main id="app-wrapper" class="hidden">
+        <div id="farmer-dashboard-page" class="page active container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+             <div class="max-w-4xl mx-auto">
+                 <div class="flex justify-between items-start mb-2">
+                     <div>
+                         <h1 class="text-3xl font-bold text-gray-800">Farmer Dashboard</h1>
+                         <p class="text-gray-600">Update your available produce quantity.</p>
+                     </div>
+                     <button type="button" id="detect-farm-location-btn" class="text-sm text-green-600 hover:underline flex items-center space-x-1 mt-2">
+                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                         <span>Detect Farm Location</span>
+                     </button>
+                 </div>
+                 <div id="farm-location-display" class="text-sm text-gray-700 mb-6 h-5"></div>
+                 
+                 <div id="farmer-product-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+                 <div class="mt-8 pt-4 border-t-2 border-gray-200 flex justify-between items-center">
+                     <div>
+                         <span class="text-lg font-bold text-gray-700 mr-4">Total Potential Earnings:</span>
+                         <span id="farmer-total-earnings" class="text-xl font-bold text-green-700">₹0.00</span>
+                     </div>
+                     <button id="farmer-submit-btn" class="bg-green-600 text-white font-bold py-3 px-6 rounded-md hover:bg-green-700">Submit Availability</button>
+                 </div>
+             </div>
+        </div>
+        
+        <div id="my-submissions-page" class="page container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="max-w-4xl mx-auto">
+                <h1 class="text-3xl font-bold text-gray-800 mb-6">My Submissions</h1>
+                <div id="submissions-list" class="space-y-4"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="login-wrapper" class="min-h-screen flex items-center justify-center bg-gray-50">
+        <div class="mx-auto w-full max-w-sm">
+            <div class="text-center mb-8">
+                <div class="text-5xl font-bold text-green-700 italic mb-4">🌱 Farmfura</div>
+            </div>
+            <div class="bg-white p-8 shadow-lg rounded-lg">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Farmer Login</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label for="login-credential" class="block text-gray-700 text-sm font-bold mb-2">Phone Number</label>
+                        <input type="text" id="login-credential" class="w-full py-3 px-4 border rounded-md" placeholder="Enter 10-digit phone number" required>
+                    </div>
+                    <div id="otp-field-container" class="hidden">
+                        <label for="login-otp" class="block text-gray-700 text-sm font-bold mb-2">Enter OTP</label>
+                        <input type="text" id="login-otp" class="w-full py-3 px-4 border rounded-md" placeholder="Enter OTP">
+                    </div>
+                    <button id="universal-login-btn" type="button" class="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700">Send OTP</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="toast-message" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-xl text-white bg-green-600 opacity-0 z-[101]"></div>
+    <div id="quantity-modal" class="modal-backdrop"></div>
+    <div id="onboarding-modal" class="modal-backdrop"></div>
+
+<script src="data-init.js"></script>
+<script>
+// The complete JavaScript for the farmer portal goes here.
+</script>
+</body>
+</html>

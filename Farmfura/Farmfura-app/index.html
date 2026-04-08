@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Farmfura</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; }
+        .login-card { 
+            transition: all 0.2s ease-in-out; 
+            border: 1px solid #e5e7eb; 
+            background-color: white;
+        }
+        .login-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1); 
+            border-color: #d1d5db; 
+        }
+        .custom-select-wrapper { position: relative; }
+        .custom-select { 
+            appearance: none; 
+            background-color: transparent; 
+            border: 1px solid #d1d5db;
+            padding: 0.5rem 2.5rem 0.5rem 1rem; 
+            cursor: pointer; 
+            border-radius: 0.375rem;
+        }
+        .custom-select-wrapper::after { 
+            content: '▾'; 
+            font-size: 1rem; 
+            color: #6b7280; 
+            position: absolute; 
+            right: 0.75rem; 
+            top: 50%; 
+            transform: translateY(-50%); 
+            pointer-events: none; 
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen flex flex-col">
+        <header class="bg-white">
+            <div class="container mx-auto px-6 py-4 flex justify-between items-center">
+                <div class="text-2xl font-bold text-green-700 italic">🌱 Farmfura</div>
+                <div class="custom-select-wrapper">
+                    <select id="language-switcher" class="custom-select text-gray-700">
+                        <option value="en">English</option>
+                        <option value="kn">ಕನ್ನಡ</option>
+                        <option value="hi">हिन्दी</option>
+                    </select>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-grow flex items-center justify-center">
+            <div class="w-full max-w-sm space-y-6 px-4">
+                <a href="buyer.html" class="login-card block p-6 rounded-lg shadow-sm text-center">
+                    <h2 data-lang-key="buyer_login" class="text-xl font-semibold text-gray-800">Buyer Login</h2>
+                </a>
+                <a href="farmer.html" class="login-card block p-6 rounded-lg shadow-sm text-center">
+                    <h2 data-lang-key="farmer_login" class="text-xl font-semibold text-gray-800">Farmer Login</h2>
+                </a>
+                <a href="Employee.html" class="login-card block p-6 rounded-lg shadow-sm text-center">
+                    <h2 data-lang-key="employee_login" class="text-xl font-semibold text-gray-800">Employee Login</h2>
+                </a>
+            </div>
+        </main>
+    </div>
+
+<script src="data-init.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const languageSwitcher = document.getElementById('language-switcher');
+    
+    const translations = {
+        en: { buyer_login: 'Buyer Login', farmer_login: 'Farmer Login', employee_login: 'Employee Login' },
+        kn: { buyer_login: 'ಖರೀದಿದಾರರ ಲಾಗಿನ್', farmer_login: 'ರೈತರ ಲಾಗಿನ್', employee_login: 'ನೌಕರರ ಲಾಗಿನ್' },
+        hi: { buyer_login: 'क्रेता लॉगिन', farmer_login: 'किसान लॉगिन', employee_login: 'कर्मचारी लॉगिन' }
+    };
+
+    function setLanguage(lang) {
+        document.querySelectorAll('[data-lang-key]').forEach(el => {
+            const key = el.dataset.langKey;
+            if (translations[lang] && translations[lang][key]) {
+                el.textContent = translations[lang][key];
+            }
+        });
+        localStorage.setItem('farmfura_preferred_lang', lang);
+        languageSwitcher.value = lang;
+    }
+
+    languageSwitcher.addEventListener('change', (e) => setLanguage(e.target.value));
+
+    const preferredLang = localStorage.getItem('farmfura_preferred_lang') || 'en';
+    setLanguage(preferredLang);
+});
+</script>
+</body>
+</html>

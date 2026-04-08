@@ -1,0 +1,1991 @@
+
+
+
+# ===== FILE: /metadata.json =====
+
+{
+  "name": "Farmfura -buyer portal",
+  "description": "An e-commerce web application for ordering fresh vegetables, fruits, flowers, and homemade products directly from local sources. Features multi-language support, voice search, and real-time delivery tracking.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
+
+
+# ===== FILE: /types.ts =====
+
+export interface Product {
+  id: number;
+  name: string;
+  price: number;
+  farmerPrice: number;
+  category: 'vegetables' | 'fruits' | 'flowers' | 'homemade';
+  unit: 'kg' | 'bundle' | 'piece' | 'pack';
+  image: string;
+  names: {
+    kn: string;
+    hi: string;
+  };
+  inStock: boolean;
+}
+
+export interface Category {
+  id: 'all' | 'vegetables' | 'fruits' | 'flowers' | 'homemade';
+  names: {
+    en: string;
+    kn: string;
+    hi: string;
+  };
+}
+
+export interface CartItem extends Product {
+  quantity: number;
+  isSubscription?: boolean;
+}
+
+export interface Order {
+  id: string;
+  timestamp: number;
+  items: CartItem[];
+  total: number;
+  status: string;
+  deliveryDay?: string;
+}
+
+export interface User {
+  loginCredential: string;
+  name: string;
+}
+
+export interface Address {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  pin: string;
+}
+
+export interface SubscriptionPlan {
+    name: string;
+    price: number;
+    maxWeight: number; // in kgs
+    description: string;
+}
+
+
+
+# ===== FILE: /constants.ts =====
+
+import { Product, Category, SubscriptionPlan } from './types';
+
+export const ALL_PRODUCTS: Product[] = [
+    // Vegetables
+    { id: 16, name: 'Amaranth leaves', price: 22, farmerPrice: 18, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/KISHAN%20D/AMARNATH%20LEAVES.png', names: { kn: 'ದಂಟಿನ ಸೊಪ್ಪು', hi: 'चौलाई' }, inStock: true },
+    { id: 28, name: 'Ash Gourd', price: 30, farmerPrice: 24, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/ash%20ground.jpg', names: { kn: 'ಬೂದುಗುಂಬಳ', hi: 'पेठा' }, inStock: true },
+    { id: 45, name: 'Bamboo Shoot', price: 90, farmerPrice: 72, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/bamboo%20shoot.jpg', names: { kn: 'ಬಿದಿರು ಚಿಗುರು', hi: 'बांस की शाखा' }, inStock: true },
+    { id: 46, name: 'Banana Stem', price: 30, farmerPrice: 24, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/banana%20stem.jpg', names: { kn: 'ಬಾಳೆ ದಿಂಡು', hi: 'केले का तना' }, inStock: true },
+    { id: 8, name: 'Beans', price: 60, farmerPrice: 48, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/Beans.jpg', names: { kn: 'ಹುರುಳಿಕಾಯಿ', hi: 'फलियां' }, inStock: true },
+    { id: 52, name: 'Beetroot', price: 40, farmerPrice: 32, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/beetroot.jpg', names: { kn: 'ಬೀಟ್ರೂಟ್', hi: 'चुकंदर' }, inStock: true },
+    { id: 26, name: 'Bitter Gourd', price: 50, farmerPrice: 40, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/bitter%20gourd.jpg', names: { kn: 'ಹಾಗಲಕಾಯಿ', hi: 'करेला' }, inStock: true },
+    { id: 24, name: 'Bottle Gourd', price: 35, farmerPrice: 28, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/bottle%20gourd.jpg', names: { kn: 'ಸೋರೆಕಾಯಿ', hi: 'लौकी' }, inStock: true },
+    { id: 6, name: 'Brinjal', price: 35, farmerPrice: 28, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/brinjal.jpg', names: { kn: 'ಬದನೆಕಾಯಿ', hi: 'बैंगन' }, inStock: true },
+    { id: 29, name: 'Broad Beans', price: 55, farmerPrice: 44, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/broad%20bans.jpg', names: { kn: 'ಅವರೆಕಾಯಿ', hi: 'सेम फली' }, inStock: true },
+    { id: 44, name: 'Broccoli', price: 80, farmerPrice: 64, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/broccoli.jpg', names: { kn: 'ಬ್ರೊಕೊಲಿ', hi: 'ब्रोकोली' }, inStock: true },
+    { id: 22, name: 'Cabbage', price: 25, farmerPrice: 20, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/cabbage.jpg', names: { kn: 'ಎಲೆಕೋಸು', hi: 'पत्ता गोभी' }, inStock: true },
+    { id: 18, name: 'Capsicum', price: 55, farmerPrice: 44, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/capsium.jpg', names: { kn: 'ದೊಣ್ಣೆ ಮೆಣಸಿನಕಾಯಿ', hi: 'शिमला मिर्च' }, inStock: true },
+    { id: 4, name: 'Carrot', price: 45, farmerPrice: 36, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/carrot.jpg', names: { kn: 'ಕ್ಯಾರೆಟ್', hi: 'गाजर' }, inStock: true },
+    { id: 7, name: 'Cauliflower', price: 50, farmerPrice: 40, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/cauliflower.jpg', names: { kn: 'ಹೂಕೋಸು', hi: 'फूलगोभी' }, inStock: true },
+    { id: 32, name: 'Cluster Bean', price: 50, farmerPrice: 40, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/KISHAN%20D/Cluster%20bean.png', names: { kn: 'ಗೋರಿಕಾಯಿ', hi: 'गवार फली' }, inStock: true },
+    { id: 34, name: 'Colocasia', price: 40, farmerPrice: 32, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/colocasia.jpg', names: { kn: 'ಕೆಸುವಿನ ಗಡ್ಡೆ', hi: 'अरबी' }, inStock: true },
+    { id: 27, name: 'Coriander leaves', price: 15, farmerPrice: 12, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/coriander%20leaves.jpg', names: { kn: 'ಕೊತ್ತಂಬರಿ ಸೊಪ್ಪು', hi: 'धनिया पत्ती' }, inStock: true },
+    { id: 30, name: 'Cowpea', price: 48, farmerPrice: 38, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/cowpea.jpg', names: { kn: 'ಅಲಸಂದೆ', hi: 'लोबिया' }, inStock: true },
+    { id: 19, name: 'Cucumber', price: 35, farmerPrice: 28, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/cucumber.jpg', names: { kn: 'ಸೌತೆಕಾಯಿ', hi: 'खीरा' }, inStock: true },
+    { id: 37, name: 'Curry leaves', price: 10, farmerPrice: 8, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/curry%20leaves.jpg', names: { kn: 'ಕರಿಬೇವು', hi: 'करी पत्ता' }, inStock: true },
+    { id: 17, name: 'Dill Leaves', price: 28, farmerPrice: 22, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/dill%20leaves.jpg', names: { kn: 'ಸಬ್ಬಸಿಗೆ ಸೊಪ್ಪು', hi: 'सोआ' }, inStock: true },
+    { id: 35, name: 'Elephant Foot Yam', price: 45, farmerPrice: 36, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/Elephant%20foot.jpg', names: { kn: 'ಸುವರ್ಣಗೆಡ್ಡೆ', hi: 'जिमीकंद' }, inStock: true },
+    { id: 14, name: 'Fenugreek leaves', price: 25, farmerPrice: 20, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/Fenugreek%20leaves.jpg', names: { kn: 'ಮೆಂತ್ಯ', hi: 'मेथी' }, inStock: true },
+    { id: 10, name: 'Garlic', price: 120, farmerPrice: 96, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/Garlic.jpg', names: { kn: 'ಬೆಳ್ಳುಳ್ಳಿ', hi: 'लहसुन' }, inStock: true },
+    { id: 11, name: 'Ginger', price: 100, farmerPrice: 80, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/ginger.jpg', names: { kn: 'ಶುಂಠಿ', hi: 'अदरक' }, inStock: true },
+    { id: 50, name: 'Green Brinjal', price: 38, farmerPrice: 30, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/green%20brinjal.jpg', names: { kn: 'ಹಸಿರು ಬದನೆಕಾಯಿ', hi: 'हरा बैंगन' }, inStock: true },
+    { id: 20, name: 'Green Chilly', price: 80, farmerPrice: 64, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/green%20chilli.jpg', names: { kn: 'ಹಸಿರು ಮೆಣಸಿನಕಾಯಿ', hi: 'हरी मिर्च' }, inStock: true },
+    { id: 48, name: 'Green Onion', price: 20, farmerPrice: 16, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/green%20onion.jpg', names: { kn: 'ಈರುಳ್ಳಿ ಹೂವು', hi: 'हरा प्याज' }, inStock: true },
+    { id: 31, name: 'Ivy Gourd', price: 42, farmerPrice: 34, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/ivy%20gourd.jpg', names: { kn: 'ತೊಂಡೆಕಾಯಿ', hi: 'कुंदरू' }, inStock: true },
+    { id: 5, name: 'Ladies Finger', price: 40, farmerPrice: 32, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/ladies%20finger.jpg', names: { kn: 'ಬೆಂಡೆಕಾಯಿ', hi: 'भिंडी' }, inStock: true },
+    { id: 43, name: 'Lettuce', price: 50, farmerPrice: 40, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/KISHAN%20D/lettuce.png', names: { kn: 'ಲೆಟ್ಯೂಸ್', hi: 'सलाद पत्ता' }, inStock: true },
+    { id: 38, name: 'Mint leaves', price: 12, farmerPrice: 10, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/Mint%20leaves.jpg', names: { kn: 'ಪುದೀನಾ', hi: 'पुदीना' }, inStock: true },
+    { id: 36, name: 'Moringa (drumstick)', price: 60, farmerPrice: 48, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/moringa.jpg', names: { kn: 'ನುಗ್ಗೆಕಾಯಿ', hi: 'सहजन' }, inStock: true },
+    { id: 39, name: 'Mushroom', price: 70, farmerPrice: 56, category: 'vegetables', unit: 'pack', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/KISHAN%20D/Mushroom.png', names: { kn: 'ಅಣಬೆ', hi: 'मशरूम' }, inStock: true },
+    { id: 15, name: 'Mustard Greens (Sarson)', price: 30, farmerPrice: 24, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/mustard%20green.jpg', names: { kn: 'ಸಾಸಿವೆ ಸೊಪ್ಪು', hi: 'सरसों का साग' }, inStock: true },
+    { id: 3, name: 'Onion', price: 28, farmerPrice: 22, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/onion.jpg', names: { kn: 'ಈರುಳ್ಳಿ', hi: 'प्याज' }, inStock: true },
+    { id: 41, name: 'Peas', price: 65, farmerPrice: 52, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/peas.jpg', names: { kn: 'ಬಟಾಣಿ', hi: 'मटर' }, inStock: true },
+    { id: 2, name: 'Potato', price: 25, farmerPrice: 20, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/potato.jpg', names: { kn: 'ಆಲೂಗಡ್ಡೆ', hi: 'आलू' }, inStock: true },
+    { id: 23, name: 'Pumpkin', price: 40, farmerPrice: 32, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/pumpkin.jpg', names: { kn: 'ಕುಂಬಳಕಾಯಿ', hi: 'कद्दू' }, inStock: true },
+    { id: 21, name: 'Radish', price: 30, farmerPrice: 24, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/KISHAN%20D/Radish.png', names: { kn: 'ಮೂಲಂಗಿ', hi: 'मूली' }, inStock: true },
+    { id: 25, name: 'Ridge Gourd', price: 45, farmerPrice: 36, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/ridge%20gourd.jpg', names: { kn: 'ಹೀರೆಕಾಯಿ', hi: 'तुरई' }, inStock: true },
+    { id: 13, name: 'Spinach', price: 20, farmerPrice: 16, category: 'vegetables', unit: 'bundle', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/spinach.jpg', names: { kn: 'ಪಾಲಕ್', hi: 'पालक' }, inStock: true },
+    { id: 33, name: 'Sweet Potato', price: 35, farmerPrice: 28, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/KISHAN%20D/sweet%20potato.png', names: { kn: 'ಸಿಹಿ ಗೆಣಸು', hi: 'शकरकंद' }, inStock: true },
+    { id: 42, name: 'Sweet Corn', price: 25, farmerPrice: 20, category: 'vegetables', unit: 'piece', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/sweet%20corn.jpg', names: { kn: 'ಮುಸುಕಿನ ಜೋಳ', hi: 'मीठा मक्का' }, inStock: true },
+    { id: 1, name: 'Tomato', price: 30, farmerPrice: 24, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/tomato.jpg', names: { kn: 'ಟೊಮೆಟೊ', hi: 'टमाटर' }, inStock: true },
+    { id: 40, name: 'Turnip', price: 38, farmerPrice: 30, category: 'vegetables', unit: 'kg', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/KISHAN%20D/turnrip.jpg', names: { kn: 'ನವಿಲುಕೋಸು', hi: 'शलजम' }, inStock: true },
+    
+    // Fruits
+    { id: 101, name: 'Mango', price: 80, farmerPrice: 64, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=101', names: { kn: 'ಮಾವಿನಹಣ್ಣು', hi: 'आम' }, inStock: true },
+    { id: 102, name: 'Banana', price: 40, farmerPrice: 32, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=102', names: { kn: 'ಬಾಳೆಹಣ್ಣು', hi: 'केला' }, inStock: true },
+    { id: 103, name: 'Jackfruit', price: 50, farmerPrice: 40, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=103', names: { kn: 'ಹಲಸಿನಹಣ್ಣು', hi: 'कटहल' }, inStock: true },
+    { id: 104, name: 'Guava', price: 60, farmerPrice: 48, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=104', names: { kn: 'ಪೇರಳೆ', hi: 'अमरूद' }, inStock: true },
+    { id: 105, name: 'Papaya', price: 45, farmerPrice: 36, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=105', names: { kn: 'ಪಪ್ಪಾಯಿ', hi: 'पपीता' }, inStock: true },
+    { id: 106, name: 'Pineapple', price: 55, farmerPrice: 44, category: 'fruits', unit: 'piece', image: 'https://picsum.photos/400/300?random=106', names: { kn: 'ಅನಾನಸ್', hi: 'अनानास' }, inStock: true },
+    { id: 107, name: 'Watermelon', price: 30, farmerPrice: 24, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=107', names: { kn: 'ಕಲ್ಲಂಗಡಿ', hi: 'तरबूज' }, inStock: true },
+    { id: 108, name: 'Muskmelon', price: 35, farmerPrice: 28, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=108', names: { kn: 'ಕರಬೂಜ', hi: 'खरबूजा' }, inStock: true },
+    { id: 109, name: 'Orange', price: 70, farmerPrice: 56, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=109', names: { kn: 'ಕಿತ್ತಳೆ', hi: 'संतरा' }, inStock: true },
+    { id: 110, name: 'Sweet Lime', price: 65, farmerPrice: 52, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=110', names: { kn: 'ಮೂಸಂಬಿ', hi: 'मौसम्बी' }, inStock: true },
+    { id: 111, name: 'Lemon', price: 5, farmerPrice: 4, category: 'fruits', unit: 'piece', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/Lemon.jpg', names: { kn: 'ನಿಂಬೆ', hi: 'नींबू' }, inStock: true },
+    { id: 112, name: 'Pomegranate', price: 120, farmerPrice: 96, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=112', names: { kn: 'ದಾಳಿಂಬೆ', hi: 'अनार' }, inStock: true },
+    { id: 113, name: 'Grapes', price: 90, farmerPrice: 72, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=113', names: { kn: 'ದ್ರಾಕ್ಷಿ', hi: 'अंगूर' }, inStock: true },
+    { id: 114, name: 'Apple', price: 150, farmerPrice: 120, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=114', names: { kn: 'ಸೇಬು', hi: 'सेब' }, inStock: true },
+    { id: 115, name: 'Chikoo', price: 60, farmerPrice: 48, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=115', names: { kn: 'ಸಪೋಟ', hi: 'चीकू' }, inStock: true },
+    { id: 116, name: 'Amla', price: 50, farmerPrice: 40, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=116', names: { kn: 'ನೆಲ್ಲಿಕಾಯಿ', hi: 'आंवला' }, inStock: true },
+    { id: 117, name: 'Jamun', price: 80, farmerPrice: 64, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=117', names: { kn: 'ನೇರಳೆ', hi: 'जामुन' }, inStock: true },
+    { id: 118, name: 'Litchi', price: 180, farmerPrice: 144, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=118', names: { kn: 'ಲಿಚಿ', hi: 'लीची' }, inStock: true },
+    { id: 119, name: 'Coconut', price: 40, farmerPrice: 32, category: 'fruits', unit: 'piece', image: 'https://raw.githubusercontent.com/kishansharathgowda23-oss/farmfura-images./main/KISHAN%20D/Coconut.jpg', names: { kn: 'ತೆಂಗಿನಕಾಯಿ', hi: 'नारियल' }, inStock: true },
+    { id: 120, name: 'Custard Apple', price: 90, farmerPrice: 72, category: 'fruits', unit: 'kg', image: 'https://picsum.photos/400/300?random=120', names: { kn: 'ಸೀತಾಫಲ', hi: 'शरीफा' }, inStock: true },
+    { id: 121, name: 'Strawberry', price: 250, farmerPrice: 200, category: 'fruits', unit: 'pack', image: 'https://picsum.photos/400/300?random=121', names: { kn: 'ಸ್ಟ್ರಾಬೆರಿ', hi: 'स्ट्रॉबेरी' }, inStock: true },
+
+    // Flowers
+    { id: 201, name: 'Rose', price: 20, farmerPrice: 16, category: 'flowers', unit: 'piece', image: 'https://picsum.photos/400/300?random=201', names: { kn: 'ಗುಲಾಬಿ', hi: 'गुलाब' }, inStock: true },
+    { id: 202, name: 'Marigold', price: 50, farmerPrice: 40, category: 'flowers', unit: 'kg', image: 'https://picsum.photos/400/300?random=202', names: { kn: 'ಚೆಂಡು ಹೂವು', hi: 'गेंदा' }, inStock: true },
+    { id: 203, name: 'Jasmine', price: 30, farmerPrice: 24, category: 'flowers', unit: 'bundle', image: 'https://picsum.photos/400/300?random=203', names: { kn: 'ಮಲ್ಲಿಗೆ', hi: 'चमेली' }, inStock: true },
+    { id: 204, name: 'Sunflower', price: 25, farmerPrice: 20, category: 'flowers', unit: 'piece', image: 'https://picsum.photos/400/300?random=204', names: { kn: 'ಸೂರ್ಯಕಾಂತಿ', hi: 'सूरजमुखी' }, inStock: true },
+    { id: 205, name: 'Hibiscus', price: 10, farmerPrice: 8, category: 'flowers', unit: 'piece', image: 'https://picsum.photos/400/300?random=205', names: { kn: 'ದಾಸವಾಳ', hi: 'गुड़हल' }, inStock: true },
+    { id: 206, name: 'Zinnia', price: 40, farmerPrice: 32, category: 'flowers', unit: 'bundle', image: 'https://picsum.photos/400/300?random=206', names: { kn: 'ಜಿನ್ನಿಯಾ', hi: 'ज़िनिया' }, inStock: true },
+    { id: 207, name: 'Cosmos', price: 45, farmerPrice: 36, category: 'flowers', unit: 'bundle', image: 'https://picsum.photos/400/300?random=207', names: { kn: 'ಕಾಸ್ಮೊಸ್', hi: 'कॉसमॉस' }, inStock: true },
+    { id: 208, name: 'Petunia', price: 60, farmerPrice: 48, category: 'flowers', unit: 'pack', image: 'https://picsum.photos/400/300?random=208', names: { kn: 'ಪೆಟೂನಿಯಾ', hi: 'पेटुनिया' }, inStock: true },
+    { id: 209, name: 'Pansy', price: 65, farmerPrice: 52, category: 'flowers', unit: 'pack', image: 'https://picsum.photos/400/300?random=209', names: { kn: 'ಪ್ಯಾನ್ಸಿ', hi: 'पैन्सी' }, inStock: true },
+    { id: 210, name: 'Calendula', price: 50, farmerPrice: 40, category: 'flowers', unit: 'bundle', image: 'https://picsum.photos/400/300?random=210', names: { kn: 'ಕ್ಯಾಲೆಡುಲ', hi: 'कैलेंडुला' }, inStock: true },
+    { id: 211, name: 'Chrysanthemum', price: 70, farmerPrice: 56, category: 'flowers', unit: 'bundle', image: 'https://picsum.photos/400/300?random=211', names: { kn: ' ಸೇವಂತಿಗೆ', hi: 'गुलदाउदी' }, inStock: true },
+    
+    // Homemade Products
+    { id: 301, name: 'Mango Pickle', price: 120, farmerPrice: 96, category: 'homemade', unit: 'pack', image: 'https://picsum.photos/400/300?random=301', names: { kn: 'ಮಾವಿನ ಉಪ್ಪಿನಕಾಯಿ', hi: 'आम का अचार' }, inStock: true },
+    { id: 302, name: 'Lemon Pickle', price: 110, farmerPrice: 88, category: 'homemade', unit: 'pack', image: 'https://picsum.photos/400/300?random=302', names: { kn: 'ನಿಂಬೆ ಉಪ್ಪಿನಕಾಯಿ', hi: 'नींबू का अचार' }, inStock: true },
+    { id: 303, name: 'Mixed Pickle', price: 115, farmerPrice: 92, category: 'homemade', unit: 'pack', image: 'https://picsum.photos/400/300?random=303', names: { kn: 'ಮಿಶ್ರ ಉಪ್ಪಿನಕಾಯಿ', hi: 'मिश्रित अचार' }, inStock: true },
+    { id: 304, name: 'Garlic Pickle', price: 130, farmerPrice: 104, category: 'homemade', unit: 'pack', image: 'https://picsum.photos/400/300?random=304', names: { kn: 'ಬೆಳ್ಳುಳ್ಳಿ ಉಪ್ಪಿನಕಾಯಿ', hi: 'लहसुन का अचार' }, inStock: true },
+    { id: 305, name: 'Green Chilli Pickle', price: 100, farmerPrice: 80, category: 'homemade', unit: 'pack', image: 'https://picsum.photos/400/300?random=305', names: { kn: 'ಹಸಿ ಮೆಣಸಿನಕಾಯಿ ಉಪ್ಪಿನಕಾಯಿ', hi: 'हरी मिर्च का अचार' }, inStock: true },
+];
+
+export const CATEGORIES: Category[] = [
+    { id: 'all', names: { en: 'All', kn: 'ಎಲ್ಲಾ', hi: 'सब' } },
+    { id: 'vegetables', names: { en: ' Vegetables', kn: 'ತರಕಾರಿಗಳು', hi: 'सब्जियां' } },
+    { id: 'fruits', names: { en: 'Fruits', kn: 'ಹಣ್ಣುಗಳು', hi: 'फल' } },
+    { id: 'flowers', names: { en: 'Flowers', kn: 'ಹೂವುಗಳು', hi: 'फूल' } },
+    { id: 'homemade', names: { en: ' Homemade', kn: 'ಮನೆಮದ್ದು', hi: 'घर का बना' } }
+];
+
+export const SUBSCRIPTION_PLANS: SubscriptionPlan[] = [
+    { name: 'Starter Pack', price: 299, maxWeight: 5, description: 'Ideal for 1-2 people, 4-5 kgs of assorted veggies' },
+    { name: 'Family Pack', price: 699, maxWeight: 10, description: 'Ideal for 3-4 people, 8-10 kgs of assorted veggies' }
+];
+
+export const TRANSLATIONS = {
+    en: {
+        nav_back: '← Back', nav_logout: 'Logout', 
+        login_welcome_title: 'Welcome to Farmfura!', login_welcome_subtitle: 'Enter your email or mobile number to continue.', login_credential_placeholder: 'Email or 10-digit mobile number', login_continue_btn: 'Continue',
+        login_password_title: 'Enter Password', login_password_subtitle: 'Enter your password to log in.', login_password_placeholder: 'Password', login_login_btn: 'Login',
+        login_otp_title: 'Verification', login_otp_subtitle: 'Enter the OTP sent to your number.', login_otp_label: 'OTP', login_verify_btn: 'Verify & Login',
+        buyer_page_title: "Today's Fresh Produce", buyer_page_subtitle: "Browse fresh items sourced directly from local farms.", buyer_search_placeholder: "Search for items...", buyer_voice_search_title: "Search by Voice",
+        add_to_cart_btn: 'Add', 
+        premium_title: 'Weekly Family Packages', premium_subtitle: 'Subscribe and get a curated box of fresh vegetables delivered to your doorstep every week. Simple, fresh, and convenient.', 
+        starter_pack_title: 'Starter Pack', per_week: '/week', starter_pack_f1: 'Ideal for 1-2 people', starter_pack_f2: '4-5 kgs of assorted veggies', 
+        subscribe_btn: 'Subscribe Now', popular_tag: 'POPULAR', 
+        family_pack_title: 'Family Pack', family_pack_f1: '3-4 people', family_pack_f2: '8-10 kgs of assorted veggies', 
+        checkout_title: 'Checkout', shipping_address: 'Shipping Address', checkout_add_address_btn: '+ Add New Address', checkout_no_address: 'Please add an address',
+        delivery_slot: 'Select Delivery Slot', slot_15min: 'Express (in 15 mins)', slot_morning: 'Morning (8am - 12pm)', slot_afternoon: 'Afternoon (1pm - 5pm)', slot_evening: 'Evening (6pm - 8pm)',
+        payment_method: 'Payment Method', payment_cod: 'Cash on Delivery (COD)', payment_upi: 'UPI', payment_card: 'Credit / Debit Card', payment_upi_placeholder: 'Enter UPI ID', payment_card_number_placeholder: 'Card Number', payment_card_expiry_placeholder: 'MM / YY', payment_card_cvv_placeholder: 'CVV',
+        order_summary: 'Order Summary', summary_subtotal: 'Subtotal', summary_delivery: 'Delivery Fee', summary_total: 'Total', place_order_btn: 'Place Order', 
+        my_orders_title: 'My Orders', no_orders: 'You have not placed any orders yet.', order_id: 'Order ID', order_date: 'Date', order_items: 'Items', order_total: 'Total', order_status: 'Status', chat_btn: 'Chat', 
+        me_page_title: 'My Profile', me_name_label: 'Name', me_phone_label: 'Phone Number', me_saved_addresses_title: 'Saved Addresses', me_no_saved_addresses: 'No saved addresses found.',
+        delivery_status_title: 'Delivery Status', delivery_status_waiting: 'Searching for a carrier...', delivery_status_accepted: 'Carrier accepted! On the way to your delivery location.', delivery_status_on_the_way: 'Carrier is on the way!', delivery_status_arrived: 'Carrier has arrived at your location.', 
+        carrier_vehicle_label: 'Vehicle:', map_loading: 'Loading map...', map_eta_10: 'Carrier is 10 mins away', map_eta_5: 'Carrier is 5 mins away', map_arrived: 'Carrier has arrived!', chat_with_carrier_btn: 'Chat with Carrier', continue_shopping_btn: 'Continue Shopping', 
+        cart_title: 'Your Cart', cart_subtotal: 'Subtotal', checkout_btn: 'Proceed to Checkout', cart_empty: 'Your cart is empty.', 
+        unit_kg: 'kg', unit_bundle: 'bundle', unit_piece: 'piece', unit_pack: 'pack', free_item: 'FREE',
+        in_stock: 'In Stock', out_of_stock: 'Out of Stock', deal_badge: 'DEAL!', 
+        rewards_title: 'Coin Rewards', rewards_subtitle: 'Use your Farmfura Coins to redeem exclusive rewards!', your_balance: 'Your Balance', redeem_btn: 'Redeem', reward_redeemed: 'Redeemed!', not_enough_coins: 'Not enough coins to redeem this reward.', reward_already_redeemed: 'Reward already redeemed or invalid.', discount_applied: 'Discount Applied', no_redeemable_rewards: 'No redeemable rewards configured.',
+        address_modal_title: 'Add New Address', address_modal_name_placeholder: 'Full Name', address_modal_address_placeholder: 'Address (House No, Street)', address_modal_city_placeholder: 'City', address_modal_pin_placeholder: 'Pin Code', address_modal_save_btn: 'Save Address', address_saved_toast: 'Address saved successfully!', form_field_required: 'Please fill in the {fieldName} field.',
+        chat_modal_title: 'Chat with Carrier', chat_modal_default_msg: "Hello! I'm on my way to your location. See you in a few minutes.", chat_modal_input_placeholder: 'Type a message...', chat_modal_send_btn: 'Send',
+        otp_sent_toast: 'OTP sent to {credential} (It\'s 1234 for the demo)', invalid_login_toast: 'Please enter a valid email or 10-digit phone number.', invalid_password_toast: 'Please enter a password.', invalid_otp_toast: 'Invalid OTP.', checkout_no_address_toast: 'Please add and select a shipping address.',
+        added_to_cart_toast: '{productName} added to cart!', free_added_to_cart_toast: '{productName} added to cart for FREE!',
+        coins_earned_toast: 'You earned {coinsEarned} Farmfura Coins!',
+        voice_error_toast: 'Voice recognition error: {error}', voice_start_error_toast: 'Voice recognition could not be started.',
+        bottom_nav_shop: 'Shop', bottom_nav_rewards: 'Rewards', bottom_nav_premium: 'Premium', bottom_nav_orders: 'My Orders', bottom_nav_me: 'Me',
+        subscription_selection_title: 'Customize Your Weekly Box', 'subscription_selection_subtitle': 'Select your favorite vegetables and fruits for your {planName}.', max_weight: 'Max Weight', current_weight: 'Current Weight', confirm_and_checkout: 'Confirm & Proceed to Checkout', select_delivery_day: 'Select Weekly Delivery Day',
+        day_sunday: 'Sunday', day_monday: 'Monday', day_tuesday: 'Tuesday', day_wednesday: 'Wednesday', day_thursday: 'Thursday', day_friday: 'Friday', day_saturday: 'Saturday',
+        your_custom_selections: 'Your Custom Selections',
+    },
+    kn: {
+        nav_back: '← ಹಿಂದೆ', nav_logout: 'ಲಾಗ್‌ಔಟ್',
+        login_welcome_title: 'ಫಾರ್ಮ್‌ಫುರಾಗೆ ಸುಸ್ವಾಗತ!', login_welcome_subtitle: 'ಮುಂದುವರೆಯಲು ನಿಮ್ಮ ಇಮೇಲ್ ಅಥವಾ ಮೊಬೈಲ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.', login_credential_placeholder: 'ಇಮೇಲ್ ಅಥವಾ 10-ಅಂಕಿಯ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ', login_continue_btn: 'ಮುಂದುವರಿಸಿ',
+        login_password_title: 'ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ', login_password_subtitle: 'ಲಾಗ್ ಇನ್ ಮಾಡಲು ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ.', login_password_placeholder: 'ಪಾಸ್‌ವರ್ಡ್', login_login_btn: 'ಲಾಗ್ ಇನ್',
+        login_otp_title: 'ಪರಿಶೀಲನೆ', login_otp_subtitle: 'ನಿಮ್ಮ ಸಂಖ್ಯೆಗೆ ಕಳುಹಿಸಲಾದ OTP ನಮೂದಿಸಿ.', login_otp_label: 'OTP', login_verify_btn: 'ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಲಾಗಿನ್ ಮಾಡಿ',
+        buyer_page_title: 'ಇಂದಿನ ತಾಜಾ ಉತ್ಪನ್ನಗಳು', buyer_page_subtitle: 'ಸ್ಥಳೀಯ ಹೊಲಗಳಿಂದ ನೇರವಾಗಿ ಪಡೆದ ತಾಜಾ ಉತ್ಪನ್ನಗಳನ್ನು ಬ್ರೌಸ್ ಮಾಡಿ.', buyer_search_placeholder: "ವಸ್ತುಗಳಿಗಾಗಿ ಹುಡುಕಿ...", buyer_voice_search_title: "ಧ್ವನಿ ಮೂಲಕ ಹುಡುಕಿ",
+        add_to_cart_btn: 'ಸೇರಿಸಿ', 
+        premium_title: 'ವಾರದ ಕುಟುಂಬ ಪ್ಯಾಕೇಜ್‌ಗಳು', premium_subtitle: 'ಚಂದಾದಾರರಾಗಿ ಮತ್ತು ಪ್ರತಿ ವಾರ ನಿಮ್ಮ ಮನೆ ಬಾಗಿಲಿಗೆ ತಾಜಾ ತರಕಾರಿಗಳ ಕ್ಯುರೇಟೆಡ್ ಬಾಕ್ಸ್ ಪಡೆಯಿರಿ. ಸರಳ, ತಾಜಾ ಮತ್ತು ಅನುಕೂಲಕರ.', 
+        starter_pack_title: 'ಸ್ಟಾರ್ಟರ್ ಪ್ಯಾಕ್', per_week: '/ವಾರಕ್ಕೆ', starter_pack_f1: '1-2 ಜನರಿಗೆ ಸೂಕ್ತವಾಗಿದೆ', starter_pack_f2: '4-5 ಕೆಜಿ ವಿಂಗಡಿಸಲಾದ ತರಕಾರಿಗಳು', 
+        subscribe_btn: 'ಈಗ ಚಂದಾದಾರರಾಗಿ', popular_tag: 'ಜನಪ್ರಿಯ', 
+        family_pack_title: 'ಕುಟುಂಬ ಪ್ಯಾಕ್', family_pack_f1: '3-4 ಜನರಿಗೆ ಸೂಕ್ತವಾಗಿದೆ', family_pack_f2: '8-10 ಕೆಜಿ ವಿಂಗಡಿಸಲಾದ ತರಕಾರಿಗಳು', 
+        checkout_title: 'ಚೆಕ್ಔಟ್', shipping_address: 'ಶಿಪ್ಪಿಂಗ್ ವಿಳಾಸ', checkout_add_address_btn: '+ ಹೊಸ ವಿಳಾಸವನ್ನು ಸೇರಿಸಿ', checkout_no_address: 'ದಯವಿಟ್ಟು ವಿಳಾಸವನ್ನು ಸೇರಿಸಿ',
+        delivery_slot: 'ವಿತರಣಾ ಸ್ಲಾಟ್ ಆಯ್ಕೆಮಾಡಿ', slot_15min: 'ಎಕ್ಸ್‌ಪ್ರೆಸ್ (15 ನಿಮಿಷಗಳಲ್ಲಿ)', slot_morning: 'ಬೆಳಗ್ಗೆ (8am - 12pm)', slot_afternoon: 'ಮಧ್ಯಾಹ್ನ (1pm - 5pm)', slot_evening: 'ಸಂಜೆ (6pm - 8pm)',
+        payment_method: 'ಪಾವತಿ ವಿಧಾನ', payment_cod: 'ಕ್ಯಾಶ್ ಆನ್ ಡೆಲಿವರಿ (COD)', payment_upi: 'ಯುಪಿಐ', payment_card: 'ಕ್ರೆಡಿಟ್ / ಡೆಬಿಟ್ ಕಾರ್ಡ್', payment_upi_placeholder: 'ಯುಪಿಐ ಐಡಿ ನಮೂದಿಸಿ', payment_card_number_placeholder: 'ಕಾರ್ಡ್ ಸಂಖ್ಯೆ', payment_card_expiry_placeholder: 'MM / YY', payment_card_cvv_placeholder: 'CVV',
+        order_summary: 'ಆರ್ಡರ್ ಸಾರಾಂಶ', summary_subtotal: 'ಉಪಮೊತ್ತ', summary_delivery: 'ವಿತರಣಾ ಶುಲ್ಕ', summary_total: 'ಒಟ್ಟು', place_order_btn: 'ಆರ್ಡರ್ ಮಾಡಿ', 
+        my_orders_title: 'ನನ್ನ ಆರ್ಡರ್‌ಗಳು', no_orders: 'ನೀವು ಇನ್ನೂ ಯಾವುದೇ ಆರ್ಡರ್‌ಗಳನ್ನು ಮಾಡಿಲ್ಲ.', order_id: 'ಆರ್ಡರ್ ಐಡಿ', order_date: 'ದಿನಾಂಕ', order_items: 'ವಸ್ತುಗಳು', order_total: 'ಒಟ್ಟು', order_status: 'ಸ್ಥಿತಿ', chat_btn: 'ಚಾಟ್', 
+        me_page_title: 'ನನ್ನ ಪ್ರೊಫೈಲ್', me_name_label: 'ಹೆಸರು', me_phone_label: 'ದೂರವಾಣಿ ಸಂಖ್ಯೆ', me_saved_addresses_title: 'ಉಳಿಸಿದ ವಿಳಾಸಗಳು', me_no_saved_addresses: 'ಯಾವುದೇ ಉಳಿಸಿದ ವಿಳಾಸಗಳು ಕಂಡುಬಂದಿಲ್ಲ.',
+        delivery_status_title: 'ವಿತರಣಾ ಸ್ಥಿತಿ', delivery_status_waiting: 'ವಾಹಕಕ್ಕಾಗಿ ಹುಡುಕಲಾಗುತ್ತಿದೆ...', delivery_status_accepted: 'ವಾಹಕ ಒಪ್ಪಿಕೊಂಡಿದೆ! ನಿಮ್ಮ ವಿತರಣಾ ಸ್ಥಳಕ್ಕೆ ದಾರಿಯಲ್ಲಿದೆ.', delivery_status_on_the_way: 'ವಾಹಕ ದಾರಿಯಲ್ಲಿದೆ!', delivery_status_arrived: 'ವಾಹಕ ನಿಮ್ಮ ಸ್ಥಳವನ್ನು ತಲುಪಿದೆ.', 
+        carrier_vehicle_label: 'ವಾಹನ:', map_loading: 'ನಕ್ಷೆ ಲೋಡ್ ಆಗುತ್ತಿದೆ...', map_eta_10: 'ವಾಹಕ 10 ನಿಮಿಷ ದೂರದಲ್ಲಿದೆ', map_eta_5: 'ವಾಹಕ 5 ನಿಮಿಷ ದೂರದಲ್ಲಿದೆ', map_arrived: 'ವಾಹಕ ತಲುಪಿದೆ!', chat_with_carrier_btn: 'ವಾಹಕದೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ', continue_shopping_btn: 'ಶಾಪಿಂಗ್ ಮುಂದುವರಿಸಿ', 
+        cart_title: 'ನಿಮ್ಮ ಕಾರ್ಟ್', cart_subtotal: 'ಉಪಮೊತ್ತ', checkout_btn: 'ಚೆಕ್ಔಟ್‌ಗೆ ಮುಂದುವರಿಯಿರಿ', cart_empty: 'ನಿಮ್ಮ ಕಾರ್ಟ್ ಖಾಲಿಯಾಗಿದೆ.', 
+        unit_kg: 'ಕೆಜಿ', unit_bundle: 'ಕಟ್ಟು', unit_piece: 'ತುಂಡು', unit_pack: 'ಪ್ಯಾಕ್', free_item: 'ಉಚಿತ',
+        in_stock: 'ಸ್ಟಾಕ್‌ನಲ್ಲಿದೆ', out_of_stock: 'ಸ್ಟಾಕ್ ಖಾಲಿಯಾಗಿದೆ', deal_badge: 'ಡೀಲ್!', 
+        rewards_title: 'ನಾಣ್ಯ ಬಹುಮಾನಗಳು', rewards_subtitle: 'ವಿಶೇಷ ಬಹುಮಾನಗಳನ್ನು ಪಡೆಯಲು ನಿಮ್ಮ ಫಾರ್ಮ್‌ಫುರಾ ನಾಣ್ಯಗಳನ್ನು ಬಳಸಿ!', your_balance: 'ನಿಮ್ಮ ಬ್ಯಾಲೆನ್ಸ್', redeem_btn: 'ಪಡೆಯಿರಿ', reward_redeemed: 'ಪಡೆಯಲಾಗಿದೆ!', not_enough_coins: 'ಈ ಬಹುಮಾನವನ್ನು ಪಡೆಯಲು ಸಾಕಷ್ಟು ನಾಣ್ಯಗಳಿಲ್ಲ.', reward_already_redeemed: 'ಬಹುಮಾನವನ್ನು ಈಗಾಗಲೇ ಪಡೆದಿದ್ದೀರಿ ಅಥವಾ ಅಮಾನ್ಯವಾಗಿದೆ.', discount_applied: 'ರಿಯಾಯಿತಿ ಅನ್ವಯಿಸಲಾಗಿದೆ', no_redeemable_rewards: 'ಯಾವುದೇ ರಿಡೀಮ್ ಮಾಡಬಹುದಾದ ಬಹುಮಾನಗಳನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಲಾಗಿಲ್ಲ.',
+        address_modal_title: 'ಹೊಸ ವಿಳಾಸವನ್ನು ಸೇರಿಸಿ', address_modal_name_placeholder: 'ಪೂರ್ಣ ಹೆಸರು', address_modal_address_placeholder: 'ವಿಳಾಸ (ಮನೆ ನಂ, ರಸ್ತೆ)', address_modal_city_placeholder: 'ನಗರ', address_modal_pin_placeholder: 'ಪಿನ್ ಕೋಡ್', address_modal_save_btn: 'ವಿಳಾಸವನ್ನು ಉಳಿಸಿ', address_saved_toast: 'ವಿಳಾಸವನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ!', form_field_required: 'ದಯವಿಟ್ಟು {fieldName} ಕ್ಷೇತ್ರವನ್ನು ಭರ್ತಿ ಮಾಡಿ.',
+        chat_modal_title: 'ವಾಹಕದೊಂದಿಗೆ ಚಾಟ್ ಮಾಡಿ', chat_modal_default_msg: "ನಮಸ್ಕಾರ! ನಾನು ನಿಮ್ಮ ಸ್ಥಳಕ್ಕೆ ಬರುತ್ತಿದ್ದೇನೆ. ಕೆಲವು ನಿಮಿಷಗಳಲ್ಲಿ ನಿಮ್ಮನ್ನು ಭೇಟಿಯಾಗುತ್ತೇನೆ.", chat_modal_input_placeholder: 'ಸಂದೇಶವನ್ನು ಟೈಪ್ ಮಾಡಿ...', chat_modal_send_btn: 'ಕಳುಹಿಸಿ',
+        otp_sent_toast: '{credential} ಗೆ OTP ಕಳುಹಿಸಲಾಗಿದೆ (ಡೆಮೊಗಾಗಿ ಇದು 1234 ಆಗಿದೆ)', invalid_login_toast: 'ದಯವಿಟ್ಟು ಮಾನ್ಯವಾದ ಇಮೇಲ್ ಅಥವಾ 10-ಅಂಕಿಯ ಫೋನ್ ಸಂಖ್ಯೆಯನ್ನು ನಮೂದಿಸಿ.', invalid_password_toast: 'ದಯವಿಟ್ಟು ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ.', invalid_otp_toast: 'ಅಮಾನ್ಯ OTP.', checkout_no_address_toast: 'ದಯವಿಟ್ಟು ಶಿಪ್ಪಿಂಗ್ ವಿಳಾಸವನ್ನು ಸೇರಿಸಿ ಮತ್ತು ಆಯ್ಕೆಮಾಡಿ.',
+        added_to_cart_toast: '{productName} ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಲಾಗಿದೆ!', free_added_to_cart_toast: '{productName} ಕಾರ್ಟ್‌ಗೆ ಉಚಿತವಾಗಿ ಸೇರಿಸಲಾಗಿದೆ!',
+        coins_earned_toast: 'ನೀವು {coinsEarned} ಫಾರ್ಮ್‌ಫುರಾ ನಾಣ್ಯಗಳನ್ನು ಗಳಿಸಿದ್ದೀರಿ!',
+        voice_error_toast: 'ಧ್ವನಿ ಗುರುತಿಸುವಿಕೆ ದೋಷ: {error}', voice_start_error_toast: 'ಧ್ವನಿ ಗುರುತಿಸುವಿಕೆಯನ್ನು ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
+        bottom_nav_shop: 'ಅಂಗಡಿ', bottom_nav_rewards: 'ಬಹುಮಾನಗಳು', bottom_nav_premium: 'ಪ್ರೀಮಿಯಂ', bottom_nav_orders: 'ಆರ್ಡರ್‌ಗಳು', bottom_nav_me: 'ನಾನು',
+        subscription_selection_title: 'ನಿಮ್ಮ ವಾರದ ಬಾಕ್ಸ್ ಅನ್ನು ಕಸ್ಟಮೈಸ್ ಮಾಡಿ', 'subscription_selection_subtitle': 'ನಿಮ್ಮ {planName} ಗಾಗಿ ನಿಮ್ಮ ನೆಚ್ಚಿನ ತರಕಾರಿಗಳು ಮತ್ತು ಹಣ್ಣುಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ.', max_weight: 'ಗರಿಷ್ಠ ತೂಕ', current_weight: 'ಪ್ರಸ್ತುತ ತೂಕ', confirm_and_checkout: 'ದೃಢೀಕರಿಸಿ ಮತ್ತು ಚೆಕ್‌ಔಟ್‌ಗೆ ಮುಂದುವರಿಯಿರಿ', select_delivery_day: 'ವಾರದ ವಿತರಣಾ ದಿನವನ್ನು ಆಯ್ಕೆಮಾಡಿ',
+        day_sunday: 'ಭಾನುವಾರ', day_monday: 'ಸೋಮವಾರ', day_tuesday: 'ಮಂಗಳವಾರ', day_wednesday: 'ಬುಧವಾರ', day_thursday: 'ಗುರುವಾರ', day_friday: 'ಶುಕ್ರವಾರ', day_saturday: 'ಶನಿವಾರ',
+        your_custom_selections: 'ನಿಮ್ಮ ಕಸ್ಟಮ್ ಆಯ್ಕೆಗಳು',
+    },
+    hi: {
+        nav_back: '← वापस', nav_logout: 'लॉग आउट',
+        login_welcome_title: 'फार्मफुरा में आपका स्वागत है!', login_welcome_subtitle: 'जारी रखने के लिए अपना ईमेल या मोबाइल नंबर दर्ज करें।', login_credential_placeholder: 'ईमेल या 10 अंकों का मोबाइल नंबर', login_continue_btn: 'जारी रखें',
+        login_password_title: 'पासवर्ड दर्ज करें', login_password_subtitle: 'लॉग इन करने के लिए अपना पासवर्ड दर्ज करें।', login_password_placeholder: 'पासवर्ड', login_login_btn: 'लॉग इन करें',
+        login_otp_title: 'सत्यापन', login_otp_subtitle: 'आपके नंबर पर भेजा गया OTP दर्ज करें।', login_otp_label: 'OTP', login_verify_btn: 'सत्यापित करें और लॉग इन करें',
+        buyer_page_title: 'आज की ताज़ा उपज', buyer_page_subtitle: 'सीधे स्थानीय खेतों से प्राप्त ताज़ा उपज ब्राउज़ करें।', buyer_search_placeholder: "वस्तुओं के लिए खोजें...", buyer_voice_search_title: "आवाज से खोजें",
+        add_to_cart_btn: 'जोड़ें', 
+        premium_title: 'साप्ताहिक परिवार पैकेज', premium_subtitle: 'सदस्यता लें और हर हफ्ते अपने दरवाजे पर ताजी सब्जियों का एक क्यूरेटेड बॉक्स प्राप्त करें। सरल, ताजा और सुविधाजनक।', 
+        starter_pack_title: 'स्टार्टर पैक', per_week: '/सप्ताह', starter_pack_f1: '1-2 लोगों के लिए आदर्श', starter_pack_f2: '4-5 किलो मिश्रित सब्जियां', 
+        subscribe_btn: 'अभी सदस्यता लें', popular_tag: 'लोकप्रिय', 
+        family_pack_title: 'परिवार पैक', family_pack_f1: '3-4 लोगों के लिए आदर्श', family_pack_f2: '8-10 किलो मिश्रित सब्जियां', 
+        checkout_title: 'चेकआउट', shipping_address: 'शिपिंग पता', checkout_add_address_btn: '+ नया पता जोड़ें', checkout_no_address: 'कृपया पता जोड़ें',
+        delivery_slot: 'डिलीवरी स्लॉट चुनें', slot_15min: 'एक्सप्रेस (15 मिनट में)', slot_morning: 'सुबह (8am - 12pm)', slot_afternoon: 'दोपहर (1pm - 5pm)', slot_evening: 'शाम (6pm - 8pm)',
+        payment_method: 'भुगतान विधि', payment_cod: 'कैश ऑन डिलीवरी (COD)', payment_upi: 'UPI', payment_card: 'क्रेडिट / डेबिट कार्ड', payment_upi_placeholder: 'UPI आईडी दर्ज करें', payment_card_number_placeholder: 'कार्ड नंबर', payment_card_expiry_placeholder: 'MM / YY', payment_card_cvv_placeholder: 'CVV',
+        order_summary: 'ऑर्डर सारांश', summary_subtotal: 'उप-योग', summary_delivery: 'डिलिवरी शुल्क', summary_total: 'कुल', place_order_btn: 'ऑर्डर करें', 
+        my_orders_title: 'मेरे ऑर्डर', no_orders: 'आपने अभी तक कोई ऑर्डर नहीं दिया है।', order_id: 'ऑर्डर आईडी', order_date: 'दिनांक', order_items: 'आइटम', order_total: 'कुल', order_status: 'स्थिति', chat_btn: 'चैट', 
+        me_page_title: 'मेरी प्रोफाइल', me_name_label: 'नाम', me_phone_label: 'फ़ोन नंबर', me_saved_addresses_title: 'सहेजे गए पते', me_no_saved_addresses: 'कोई सहेजा हुआ पता नहीं मिला।',
+        delivery_status_title: 'डिलीवरी स्थिति', delivery_status_waiting: 'वाहक खोज रहे हैं...', delivery_status_accepted: 'वाहक ने स्वीकार किया! आपके डिलीवरी स्थान के रास्ते में।', delivery_status_on_the_way: 'वाहक रास्ते में है!', delivery_status_arrived: 'वाहक आपके स्थान पर पहुंच गया है।', 
+        carrier_vehicle_label: 'वाहन:', map_loading: 'नक्शा लोड हो रहा है...', map_eta_10: 'वाहक 10 मिनट दूर है', map_eta_5: 'वाहक 5 मिनट दूर है', map_arrived: 'वाहक आ गया है!', chat_with_carrier_btn: 'वाहक के साथ चैट करें', continue_shopping_btn: 'खरीदारी जारी रखें', 
+        cart_title: 'आपकी कार्ट', cart_subtotal: 'उप-योग', checkout_btn: 'चेकआउट के लिए आगे बढ़ें', cart_empty: 'आपकी कार्ट खाली है।', 
+        unit_kg: 'किलो', unit_bundle: 'बंडल', unit_piece: 'पीस', unit_pack: 'पैक', free_item: 'मुफ़्त',
+        in_stock: 'स्टॉक में', out_of_stock: 'स्टॉक खत्म', deal_badge: 'डील!', 
+        rewards_title: 'कॉइन रिवार्ड्स', rewards_subtitle: 'विशेष पुरस्कारों को भुनाने के लिए अपने फार्मफुरा कॉइन्स का उपयोग करें!', your_balance: 'आपकी शेष राशि', redeem_btn: 'रिडीम करें', reward_redeemed: 'रिडीम किया गया!', not_enough_coins: 'इस इनाम को भुनाने के लिए पर्याप्त सिक्के नहीं हैं।', reward_already_redeemed: 'इनाम पहले ही भुनाया जा चुका है या अमान्य है।', discount_applied: 'छूट लागू', no_redeemable_rewards: 'कोई प्रतिदेय पुरस्कार कॉन्फ़िगर नहीं किया गया है।',
+        address_modal_title: 'नया पता जोड़ें', address_modal_name_placeholder: 'पूरा नाम', address_modal_address_placeholder: 'पता (मकान नंबर, गली)', address_modal_city_placeholder: 'शहर', address_modal_pin_placeholder: 'पिन कोड', address_modal_save_btn: 'पता सहेजें', address_saved_toast: 'पता सफलतापूर्वक सहेजा गया!', form_field_required: 'कृपया {fieldName} फ़ील्ड भरें।',
+        chat_modal_title: 'वाहक के साथ चैट करें', chat_modal_default_msg: "नमस्ते! मैं आपके स्थान पर आ रहा हूँ। कुछ मिनटों में मिलते हैं।", chat_modal_input_placeholder: 'संदेश टाइप करें...', chat_modal_send_btn: 'भेजें',
+        otp_sent_toast: '{credential} पर OTP भेजा गया (डेमो के लिए यह 1234 है)', invalid_login_toast: 'कृपया मान्य ईमेल या 10 अंकों का फोन नंबर दर्ज करें।', invalid_password_toast: 'कृपया पासवर्ड दर्ज करें।', invalid_otp_toast: 'अमान्य OTP।', checkout_no_address_toast: 'कृपया शिपिंग पता जोड़ें और चुनें।',
+        added_to_cart_toast: '{productName} कार्ट में जोड़ा गया!', free_added_to_cart_toast: '{productName} कार्ट में मुफ्त में जोड़ा गया!',
+        coins_earned_toast: 'आपने {coinsEarned} फार्मफुरा कॉइन अर्जित किए!',
+        voice_error_toast: 'आवाज पहचान त्रुटि: {error}', voice_start_error_toast: 'आवाज पहचान शुरू नहीं की जा सकी।',
+        bottom_nav_shop: 'खरीदारी', bottom_nav_rewards: 'इनाम', bottom_nav_premium: 'प्रीमियम', bottom_nav_orders: 'ऑर्डर', bottom_nav_me: 'मैं',
+        subscription_selection_title: 'अपना साप्ताहिक बॉक्स अनुकूलित करें', 'subscription_selection_subtitle': 'अपने {planName} के लिए अपनी पसंदीदा सब्जियां और फल चुनें।', max_weight: 'अधिकतम वजन', current_weight: 'वर्तमान वजन', confirm_and_checkout: 'पुष्टि करें और चेकआउट के लिए आगे बढ़ें', select_delivery_day: 'साप्ताहिक डिलीवरी का दिन चुनें',
+        day_sunday: 'रविवार', day_monday: 'सोमवार', day_tuesday: 'मंगलवार', day_wednesday: 'बुधवार', day_thursday: 'गुरुवार', day_friday: 'शुक्रवार', day_saturday: 'शनिवार',
+        your_custom_selections: 'आपके कस्टम चयन',
+    }
+};
+
+
+# ===== FILE: /App.tsx =====
+
+import React, { useState, useCallback } from 'react';
+import { Product, CartItem, Order, User, Address, SubscriptionPlan } from './types';
+import { ALL_PRODUCTS, CATEGORIES, TRANSLATIONS, SUBSCRIPTION_PLANS } from './constants';
+import LoginPage from './components/LoginPage';
+import Header from './components/Header';
+import ShopPage from './components/ShopPage';
+import RewardsPage from './components/RewardsPage';
+import PremiumPage from './components/PremiumPage';
+import CheckoutPage from './components/CheckoutPage';
+import MyOrdersPage from './components/MyOrdersPage';
+import MePage from './components/MePage';
+import OrderStatusPage from './components/OrderStatusPage';
+import BottomNav from './components/BottomNav';
+import CartPanel from './components/CartPanel';
+import Toast from './components/Toast';
+import AddressModal from './components/AddressModal';
+import ChatModal from './components/ChatModal';
+import SubscriptionSelectionPage from './components/SubscriptionSelectionPage';
+
+
+type Page = '#login' | '#buyer-page' | '#rewards-page' | '#premium-page' | '#checkout-page' | '#my-orders-page' | '#me-page' | '#order-status-page' | '#subscription-selection';
+
+const App: React.FC = () => {
+    const [currentUser, setCurrentUser] = useState<User | null>(null);
+    const [currentPage, setCurrentPage] = useState<Page>('#login');
+    const [language, setLanguage] = useState('en');
+    const [cart, setCart] = useState<CartItem[]>([]);
+    const [orders, setOrders] = useState<Order[]>([]);
+    const [addresses, setAddresses] = useState<Address[]>([]);
+
+    const [isCartOpen, setIsCartOpen] = useState(false);
+    const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+    
+    const [toast, setToast] = useState<{ message: string; isError: boolean } | null>(null);
+    
+    const [activeSubscription, setActiveSubscription] = useState<SubscriptionPlan | null>(null);
+    const [subscriptionSelection, setSubscriptionSelection] = useState<CartItem[]>([]);
+
+
+    const translations = {
+        ...(TRANSLATIONS[language as keyof typeof TRANSLATIONS] || TRANSLATIONS.en),
+        lang_code: language
+    };
+
+    const showToast = useCallback((message: string, isError = false) => {
+        setToast({ message, isError });
+        setTimeout(() => setToast(null), 3000);
+    }, []);
+
+    const handleLoginSuccess = (user: User) => {
+        setCurrentUser(user);
+        setCurrentPage('#buyer-page');
+    };
+
+    const handleLogout = () => {
+        setCurrentUser(null);
+        setCurrentPage('#login');
+        setCart([]);
+        setOrders([]);
+    };
+
+    const handleNavigate = (page: Page) => {
+        // Reset subscription flow if navigating away
+        if (page !== '#checkout-page' && page !== '#subscription-selection') {
+            setActiveSubscription(null);
+            setSubscriptionSelection([]);
+        }
+        setCurrentPage(page);
+    };
+    
+    const addToCart = (productToAdd: Product, quantity: number) => {
+        setCart(prevCart => {
+            const existingItem = prevCart.find(item => item.id === productToAdd.id);
+            if (existingItem) {
+                return prevCart.map(item => 
+                    item.id === productToAdd.id 
+                    ? { ...item, quantity: item.quantity + quantity } 
+                    : item
+                );
+            }
+            return [...prevCart, { ...productToAdd, quantity }];
+        });
+        const productName = productToAdd.names[language as keyof typeof productToAdd.names] || productToAdd.name;
+        showToast(translations.added_to_cart_toast.replace('{productName}', productName));
+    };
+
+    const updateCartQuantity = (productId: number, amount: number) => {
+        setCart(prevCart => {
+            const itemToUpdate = prevCart.find(item => item.id === productId);
+            if (!itemToUpdate) return prevCart;
+            
+            const newQuantity = itemToUpdate.quantity + amount;
+            if (newQuantity <= 0) {
+                return prevCart.filter(item => item.id !== productId);
+            }
+            return prevCart.map(item => 
+                item.id === productId ? { ...item, quantity: newQuantity } : item
+            );
+        });
+    };
+
+    const removeFromCart = (productId: number) => {
+        setCart(prevCart => prevCart.filter(item => item.id !== productId));
+    };
+
+    const clearCart = () => {
+        setCart([]);
+    };
+    
+    const handleSelectPlan = (plan: SubscriptionPlan) => {
+        setActiveSubscription(plan);
+        handleNavigate('#subscription-selection');
+    };
+    
+    const handleConfirmSubscription = (selectedItems: CartItem[]) => {
+        if (!activeSubscription) return;
+        
+        setSubscriptionSelection(selectedItems);
+        
+        const subscriptionCartItem: CartItem = {
+            id: activeSubscription.name === 'Starter Pack' ? 9001 : 9002,
+            name: `${activeSubscription.name}`,
+            price: activeSubscription.price,
+            quantity: 1,
+            isSubscription: true,
+            farmerPrice: 0, category: 'vegetables', unit: 'pack', image: '', names: { kn: '', hi: ''}, inStock: true
+        };
+        setCart([subscriptionCartItem]);
+        handleNavigate('#checkout-page');
+    };
+
+    const handlePlaceOrder = (order: Omit<Order, 'id' | 'timestamp' | 'status'>) => {
+        const newOrder: Order = {
+            id: `#FF${Date.now().toString().slice(-4)}`,
+            timestamp: Date.now(),
+            items: order.items,
+            total: order.total,
+            status: 'Pending',
+            deliveryDay: order.deliveryDay
+        };
+        setOrders(prev => [newOrder, ...prev]);
+        clearCart();
+        handleNavigate('#order-status-page');
+    };
+
+    const handleAddAddress = (address: Address) => {
+        setAddresses(prev => [...prev, address]);
+        setIsAddressModalOpen(false);
+        showToast(translations.address_saved_toast);
+    };
+
+    const renderPage = () => {
+        if (!currentUser) {
+            return <LoginPage onLoginSuccess={handleLoginSuccess} translations={translations} showToast={showToast} />;
+        }
+        switch (currentPage) {
+            case '#buyer-page':
+                return <ShopPage products={ALL_PRODUCTS} categories={CATEGORIES} addToCart={addToCart} translations={translations} showToast={showToast} />;
+            case '#rewards-page':
+                return <RewardsPage translations={translations} />;
+            case '#premium-page':
+                return <PremiumPage translations={translations} onSelectPlan={handleSelectPlan} />;
+            case '#subscription-selection':
+                if (!activeSubscription) {
+                    handleNavigate('#premium-page');
+                    return null;
+                }
+                return <SubscriptionSelectionPage plan={activeSubscription} products={ALL_PRODUCTS} onConfirmSelection={handleConfirmSubscription} translations={translations} showToast={showToast} />;
+            case '#checkout-page':
+                return <CheckoutPage cart={cart} addresses={addresses} onPlaceOrder={handlePlaceOrder} openAddressModal={() => setIsAddressModalOpen(true)} translations={translations} showToast={showToast} isSubscriptionCheckout={!!activeSubscription} subscriptionSelection={subscriptionSelection}/>;
+            case '#my-orders-page':
+                return <MyOrdersPage orders={orders} translations={translations} onChat={() => setIsChatModalOpen(true)} />;
+            case '#me-page':
+                return <MePage user={currentUser} addresses={addresses} translations={translations} />;
+            case '#order-status-page':
+                return <OrderStatusPage onBackToShop={() => handleNavigate('#buyer-page')} onChat={() => setIsChatModalOpen(true)} translations={translations} />;
+            default:
+                return <ShopPage products={ALL_PRODUCTS} categories={CATEGORIES} addToCart={addToCart} translations={translations} showToast={showToast} />;
+        }
+    };
+
+    return (
+        <>
+            <Header
+                isLoggedIn={!!currentUser}
+                cartItemCount={cart.length}
+                onCartClick={() => setIsCartOpen(true)}
+                onLogout={handleLogout}
+                onLogoClick={() => currentUser && handleNavigate('#buyer-page')}
+                showBack={!currentUser && currentPage !== '#login'}
+                onBack={() => setCurrentPage('#login')}
+                language={language}
+                onLanguageChange={setLanguage}
+            />
+            <main className="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                {renderPage()}
+            </main>
+
+            {currentUser && (
+                <>
+                    <BottomNav currentPage={currentPage} onNavigate={handleNavigate} translations={translations} />
+                    <CartPanel
+                        isOpen={isCartOpen}
+                        onClose={() => setIsCartOpen(false)}
+                        cartItems={cart}
+                        onUpdateQuantity={updateCartQuantity}
+                        onRemoveItem={removeFromCart}
+                        onCheckout={() => {
+                            setIsCartOpen(false);
+                            handleNavigate('#checkout-page');
+                        }}
+                        translations={translations}
+                    />
+                    <AddressModal 
+                        isOpen={isAddressModalOpen} 
+                        onClose={() => setIsAddressModalOpen(false)}
+                        onSave={handleAddAddress}
+                        translations={translations}
+                        showToast={showToast}
+                    />
+                    <ChatModal
+                        isOpen={isChatModalOpen}
+                        onClose={() => setIsChatModalOpen(false)}
+                        translations={translations}
+                    />
+                </>
+            )}
+
+            {toast && <Toast message={toast.message} isError={toast.isError} />}
+        </>
+    );
+};
+
+export default App;
+
+
+# ===== FILE: /package.json =====
+
+{
+  "name": "farmfura--buyer-portal",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react-dom": "^19.2.0",
+    "react": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}
+
+
+
+# ===== FILE: /index.html =====
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farmfura - Fresh For You</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            padding-bottom: 80px; /* For bottom nav */
+        }
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-gray-50">
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
+
+
+
+# ===== FILE: /index.tsx =====
+
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+
+const rootElement = document.getElementById('root');
+if (!rootElement) {
+  throw new Error("Could not find root element to mount to");
+}
+
+const root = ReactDOM.createRoot(rootElement);
+root.render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+);
+
+
+
+# ===== FILE: /tsconfig.json =====
+
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "experimentalDecorators": true,
+    "useDefineForClassFields": false,
+    "module": "ESNext",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "moduleResolution": "bundler",
+    "isolatedModules": true,
+    "moduleDetection": "force",
+    "allowJs": true,
+    "jsx": "react-jsx",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}
+
+
+# ===== FILE: /vite.config.ts =====
+
+import path from 'path';
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig(({ mode }) => {
+    const env = loadEnv(mode, '.', '');
+    return {
+      server: {
+        port: 3000,
+        host: '0.0.0.0',
+      },
+      plugins: [react()],
+      define: {
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, '.'),
+        }
+      }
+    };
+});
+
+
+
+# ===== FILE: /README.md =====
+
+<div align="center">
+<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+</div>
+
+# Run and deploy your AI Studio app
+
+This contains everything you need to run your app locally.
+
+View your app in AI Studio: https://ai.studio/apps/drive/1HCVNg2N1zUZeeLcMm9dkFhvssCwbOq8h
+
+## Run Locally
+
+**Prerequisites:**  Node.js
+
+
+1. Install dependencies:
+   `npm install`
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
+3. Run the app:
+   `npm run dev`
+
+
+
+# ===== FILE: /components/LoginPage.tsx =====
+
+
+import React, { useState } from 'react';
+import { User } from '../types';
+
+interface LoginPageProps {
+    onLoginSuccess: (user: User) => void;
+    translations: Record<string, string>;
+    showToast: (message: string, isError?: boolean) => void;
+}
+
+type LoginStep = 'credential' | 'password' | 'otp';
+
+const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, translations, showToast }) => {
+    const [step, setStep] = useState<LoginStep>('credential');
+    const [credential, setCredential] = useState('');
+    const [password, setPassword] = useState('');
+    const [otp, setOtp] = useState('');
+    const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+    
+    const handleContinue = () => {
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(credential);
+        const isPhone = /^\d{10}$/.test(credential);
+        
+        if (isEmail) {
+            setStep('password');
+        } else if (isPhone) {
+            setStep('otp');
+            setTimeout(() => {
+                showToast(translations.otp_sent_toast.replace('{credential}', credential));
+                setOtp('1234'); // Demo OTP
+            }, 500);
+        } else {
+            showToast(translations.invalid_login_toast, true);
+        }
+    };
+
+    const handleLogin = () => {
+        if (password) {
+            onLoginSuccess({ loginCredential: credential, name: 'Valued Customer' });
+        } else {
+            showToast(translations.invalid_password_toast, true);
+        }
+    };
+
+    const handleOtpVerify = () => {
+        if (otp === '1234') {
+            onLoginSuccess({ loginCredential: credential, name: 'Valued Customer' });
+        } else {
+            showToast(translations.invalid_otp_toast, true);
+        }
+    };
+    
+    const renderStep = () => {
+        switch(step) {
+            case 'password':
+                return (
+                    <div className="bg-white p-8 rounded-2xl shadow-lg text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{translations.login_password_title}</h2>
+                        <p className="text-gray-600 mb-6">{translations.login_password_subtitle}</p>
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <input 
+                                    type={isPasswordVisible ? 'text' : 'password'}
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder={translations.login_password_placeholder}
+                                    className="w-full p-3 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-green-500 pr-10" 
+                                />
+                                <button type="button" onClick={() => setIsPasswordVisible(!isPasswordVisible)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-sm leading-5">
+                                    {isPasswordVisible ? (
+                                        <svg className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 1.274-4.057 5.064 7-9.542-7 .847 0 1.673.124 2.468.352M4 4l16 16" /></svg>
+                                    ) : (
+                                        <svg className="h-6 w-6 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                    )}
+                                </button>
+                            </div>
+                            <button onClick={handleLogin} className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition">{translations.login_login_btn}</button>
+                        </div>
+                    </div>
+                );
+            case 'otp':
+                return (
+                     <div className="bg-white p-8 rounded-2xl shadow-lg text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{translations.login_otp_title}</h2>
+                        <p className="text-gray-600 mb-6">{translations.login_otp_subtitle}</p>
+                        <div className="space-y-4">
+                            <div>
+                                <label htmlFor="otp-input" className="sr-only">{translations.login_otp_label}</label>
+                                <input type="text" id="otp-input" value={otp} onChange={(e) => setOtp(e.target.value)} className="w-full p-3 border rounded-md text-center bg-gray-100 focus:outline-none" />
+                            </div>
+                            <button onClick={handleOtpVerify} className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition">{translations.login_verify_btn}</button>
+                        </div>
+                    </div>
+                );
+            default: // credential
+                return (
+                    <div className="bg-white p-8 rounded-2xl shadow-lg text-center">
+                        <h2 className="text-2xl font-bold text-gray-900 mb-2">{translations.login_welcome_title}</h2>
+                        <p className="text-gray-600 mb-6">{translations.login_welcome_subtitle}</p>
+                        <div className="space-y-4">
+                            <input 
+                                type="text"
+                                value={credential}
+                                onChange={(e) => setCredential(e.target.value)}
+                                placeholder={translations.login_credential_placeholder}
+                                className="w-full p-3 border rounded-md text-center focus:outline-none focus:ring-2 focus:ring-green-500" 
+                            />
+                            <button onClick={handleContinue} className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition">{translations.login_continue_btn}</button>
+                        </div>
+                    </div>
+                );
+        }
+    };
+
+    return (
+        <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+            <div className="max-w-md w-full space-y-8">
+                {renderStep()}
+            </div>
+        </div>
+    );
+};
+
+export default LoginPage;
+
+
+
+# ===== FILE: /components/Header.tsx =====
+
+
+import React from 'react';
+
+interface HeaderProps {
+    isLoggedIn: boolean;
+    cartItemCount: number;
+    onCartClick: () => void;
+    onLogout: () => void;
+    onLogoClick: () => void;
+    showBack: boolean;
+    onBack: () => void;
+    language: string;
+    onLanguageChange: (lang: string) => void;
+}
+
+const Header: React.FC<HeaderProps> = ({ 
+    isLoggedIn, cartItemCount, onCartClick, onLogout, onLogoClick, 
+    showBack, onBack, language, onLanguageChange 
+}) => {
+    return (
+        <header className="bg-white shadow-sm sticky top-0 z-50">
+            <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center py-4 relative">
+                    <div className="flex items-center">
+                         {showBack && (
+                            <a href="#" onClick={(e) => { e.preventDefault(); onBack(); }} className="font-semibold text-gray-600 hover:text-green-700 mr-4 whitespace-nowrap">
+                                ← Back
+                            </a>
+                        )}
+                        <div className="text-3xl font-bold text-green-700 italic cursor-pointer" onClick={onLogoClick}>
+                            🌱 Farmfura
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2 sm:space-x-4 ml-auto">
+                        <div className="relative">
+                            <select value={language} onChange={e => onLanguageChange(e.target.value)} className="block appearance-none w-full bg-white border border-gray-300 hover:border-gray-500 px-4 py-2 pr-8 rounded-md shadow-sm text-sm focus:outline-none focus:ring-green-500 focus:border-green-500">
+                                <option value="en">English</option>
+                                <option value="kn">ಕನ್ನಡ</option>
+                                <option value="hi">हिन्दी</option>
+                            </select>
+                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 6.757 7.586 5.343 9z"/></svg>
+                            </div>
+                        </div>
+
+                        {isLoggedIn && (
+                            <>
+                                <button onClick={onCartClick} className="relative text-gray-600 hover:text-green-600" title="View Cart">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                                    <span className="absolute -top-2 -right-2 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">{cartItemCount}</span>
+                                </button>
+                                <a href="#" onClick={(e) => { e.preventDefault(); onLogout(); }} className="font-semibold text-red-600 hover:text-red-800">
+                                    Logout
+                                </a>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </header>
+    );
+};
+
+export default Header;
+
+
+
+# ===== FILE: /components/ShopPage.tsx =====
+
+
+import React, { useState, useEffect } from 'react';
+import { Product, Category } from '../types';
+import ProductCard from './ProductCard';
+
+interface ShopPageProps {
+    products: Product[];
+    categories: Category[];
+    addToCart: (product: Product, quantity: number) => void;
+    translations: Record<string, string>;
+    showToast: (message: string, isError?: boolean) => void;
+}
+
+const ShopPage: React.FC<ShopPageProps> = ({ products, categories, addToCart, translations, showToast }) => {
+    const [activeCategory, setActiveCategory] = useState<string>('all');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [isListening, setIsListening] = useState(false);
+
+    const filteredProducts = products
+        .filter(p => activeCategory === 'all' || p.category === activeCategory)
+        .filter(p => {
+            const lowerSearchTerm = searchTerm.toLowerCase();
+            return (
+                p.name.toLowerCase().includes(lowerSearchTerm) ||
+                p.names.kn.toLowerCase().includes(lowerSearchTerm) ||
+                p.names.hi.toLowerCase().includes(lowerSearchTerm)
+            );
+        })
+        .sort((a,b) => a.name.localeCompare(b.name));
+
+    const handleVoiceSearch = () => {
+        // FIX: Cast window to `any` to access non-standard SpeechRecognition properties.
+        const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            showToast('Voice recognition is not supported in your browser.', true);
+            return;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.lang = translations.lang_code || 'en-US';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => setIsListening(true);
+        recognition.onend = () => setIsListening(false);
+        recognition.onerror = (event: any) => {
+            showToast(translations.voice_error_toast.replace('{error}', event.error), true);
+        };
+        recognition.onresult = (event: any) => {
+            const speechResult = event.results[0][0].transcript;
+            setSearchTerm(speechResult);
+        };
+
+        try {
+            recognition.start();
+        } catch(e) {
+            showToast(translations.voice_start_error_toast, true);
+        }
+    };
+    
+    return (
+        <div>
+            <div className="mb-6">
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">{translations.buyer_page_title}</h1>
+                <p className="text-gray-600">{translations.buyer_page_subtitle}</p>
+            </div>
+            <div className="mb-6 flex items-center">
+                <div className="relative w-full">
+                    <input 
+                        type="text" 
+                        placeholder={translations.buyer_search_placeholder}
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-full p-3 pl-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                    />
+                    <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                </div>
+                <button onClick={handleVoiceSearch} className={`ml-2 p-3 bg-white border rounded-md text-gray-500 hover:text-green-600 hover:border-green-500 transition-colors ${isListening ? 'bg-red-100 border-red-500' : ''}`} title={translations.buyer_voice_search_title}>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line></svg>
+                </button>
+            </div>
+            <div className="flex items-center space-x-2 sm:space-x-4 overflow-x-auto pb-4 mb-6">
+                {categories.map(cat => (
+                    <button 
+                        key={cat.id} 
+                        onClick={() => setActiveCategory(cat.id)}
+                        className={`flex-shrink-0 text-gray-700 font-semibold py-2 px-4 rounded-full transition ${activeCategory === cat.id ? 'bg-green-600 text-white shadow-md' : 'bg-gray-200'}`}
+                    >
+                        {cat.names[translations.lang_code as keyof typeof cat.names] || cat.names.en}
+                    </button>
+                ))}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+                {filteredProducts.map(product => (
+                    <ProductCard key={product.id} product={product} onAddToCart={addToCart} translations={translations} />
+                ))}
+            </div>
+        </div>
+    );
+};
+
+export default ShopPage;
+
+
+# ===== FILE: /components/ProductCard.tsx =====
+
+
+import React, { useState } from 'react';
+import { Product } from '../types';
+
+interface ProductCardProps {
+    product: Product;
+    onAddToCart: (product: Product, quantity: number) => void;
+    translations: Record<string, string>;
+}
+
+const ProductCard: React.FC<ProductCardProps> = ({ product, onAddToCart, translations }) => {
+    const isSpecialUnit = ['bundle', 'piece', 'pack'].includes(product.unit);
+    const quantityStep = isSpecialUnit ? 1 : 0.25;
+    const minQuantity = isSpecialUnit ? 1 : 0.25;
+
+    const [quantity, setQuantity] = useState<number | string>(minQuantity);
+
+    const handleAddToCart = () => {
+        const numQuantity = Number(quantity);
+        if (!isNaN(numQuantity) && numQuantity >= minQuantity) {
+            onAddToCart(product, numQuantity);
+        }
+    };
+    
+    const productName = product.names[translations.lang_code as keyof typeof product.names] || product.name;
+    const unitText = translations[`unit_${product.unit}`] || product.unit;
+    const stockStatusText = product.inStock ? translations.in_stock : translations.out_of_stock;
+    const stockStatusColor = product.inStock ? 'text-green-500' : 'text-red-500';
+
+    return (
+        <div className={`bg-white rounded-lg shadow-md overflow-hidden transform hover:-translate-y-1 transition-transform duration-300 relative ${!product.inStock ? 'opacity-60 pointer-events-none' : ''}`}>
+            {!product.inStock && (
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/80 px-4 py-2 rounded-lg text-red-500 font-bold text-lg z-10 whitespace-nowrap">
+                    {translations.out_of_stock}
+                </div>
+            )}
+            <div className="relative">
+                <img src={product.image} alt={product.name} className="w-full h-32 object-cover" onError={(e) => { e.currentTarget.src = 'https://picsum.photos/400/300'; }} />
+                <span className={`absolute top-2 right-2 bg-white px-2 py-1 rounded-full text-xs font-semibold ${stockStatusColor}`}>
+                    {stockStatusText}
+                </span>
+            </div>
+            <div className="p-4">
+                <h3 className="text-md font-semibold text-gray-800 h-12">{productName}</h3>
+                <div className="mt-2 mb-4">
+                    <span className="text-xl font-bold text-green-700">₹{product.price}/{unitText}</span>
+                </div>
+                <div className="flex items-center border border-gray-300 rounded-md">
+                    <input 
+                        type="number" 
+                        min={minQuantity} 
+                        step={quantityStep} 
+                        value={quantity}
+                        onChange={(e) => setQuantity(e.target.value)}
+                        className="w-16 text-center p-1 border-r border-gray-300 focus:outline-none"
+                        disabled={!product.inStock}
+                    />
+                    <button 
+                        onClick={handleAddToCart}
+                        className="flex-grow bg-green-100 text-green-800 text-sm font-bold py-1 px-2 hover:bg-green-200"
+                        disabled={!product.inStock}
+                    >
+                        {translations.add_to_cart_btn}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ProductCard;
+
+
+
+# ===== FILE: /components/CartPanel.tsx =====
+
+
+import React from 'react';
+import { CartItem } from '../types';
+
+interface CartPanelProps {
+    isOpen: boolean;
+    onClose: () => void;
+    cartItems: CartItem[];
+    onUpdateQuantity: (productId: number, amount: number) => void;
+    onRemoveItem: (productId: number) => void;
+    onCheckout: () => void;
+    translations: Record<string, string>;
+}
+
+const CartPanel: React.FC<CartPanelProps> = ({ isOpen, onClose, cartItems, onUpdateQuantity, onRemoveItem, onCheckout, translations }) => {
+    const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+
+    const getQuantityDisplay = (item: CartItem) => {
+        const unitText = translations[`unit_${item.unit}`] || item.unit;
+        if (item.unit === 'kg' && item.quantity < 1) {
+            return `${Math.round(item.quantity * 1000)}g`;
+        } else if (item.unit === 'kg') {
+            return `${item.quantity.toFixed(2)}${unitText}`;
+        }
+        return `${item.quantity} ${unitText}`;
+    };
+
+    return (
+        <div className={`fixed top-0 right-0 h-full w-full max-w-sm bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-[100] ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className="flex flex-col h-full">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-xl font-bold text-gray-800">{translations.cart_title}</h2>
+                    <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-2xl font-bold">&times;</button>
+                </div>
+
+                <div className="flex-grow p-4 overflow-y-auto">
+                    {cartItems.length === 0 ? (
+                        <p className="text-center text-gray-500">{translations.cart_empty}</p>
+                    ) : (
+                        cartItems.map(item => {
+                            const quantityStep = ['bundle', 'piece', 'pack'].includes(item.unit) ? 1 : 0.25;
+                            return (
+                                <div key={item.id} className="flex justify-between items-center mb-4">
+                                    <div className="w-1/2">
+                                        <h4 className="font-semibold text-sm">{item.names[translations.lang_code as keyof typeof item.names] || item.name}</h4>
+                                        <p className="text-xs text-gray-600">₹{item.price.toFixed(2)} / {translations[`unit_${item.unit}`] || item.unit}</p>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <button onClick={() => onUpdateQuantity(item.id, -quantityStep)} className="h-6 w-6 rounded-full bg-gray-200 font-bold">-</button>
+                                        <span className="w-20 text-center text-sm">{getQuantityDisplay(item)}</span>
+                                        <button onClick={() => onUpdateQuantity(item.id, quantityStep)} className="h-6 w-6 rounded-full bg-gray-200 font-bold">+</button>
+                                    </div>
+                                    <button onClick={() => onRemoveItem(item.id)} className="text-red-500 hover:text-red-700 font-bold text-2xl">&times;</button>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+                
+                {cartItems.length > 0 && (
+                    <div className="p-4 border-t">
+                        <div className="flex justify-between items-center mb-4">
+                            <span className="text-lg font-semibold text-gray-700">{translations.cart_subtotal}</span>
+                            <span className="text-xl font-bold text-gray-900">₹{subtotal.toFixed(2)}</span>
+                        </div>
+                        <button onClick={onCheckout} className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition disabled:bg-gray-400">
+                            {translations.checkout_btn}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default CartPanel;
+
+
+
+# ===== FILE: /components/CheckoutPage.tsx =====
+
+import React, { useState, useEffect } from 'react';
+import { CartItem, Address, Order } from '../types';
+
+interface CheckoutPageProps {
+    cart: CartItem[];
+    addresses: Address[];
+    onPlaceOrder: (order: Omit<Order, 'id' | 'timestamp' | 'status'>) => void;
+    openAddressModal: () => void;
+    translations: Record<string, string>;
+    showToast: (message: string, isError?: boolean) => void;
+    isSubscriptionCheckout: boolean;
+    subscriptionSelection: CartItem[];
+}
+
+const CheckoutPage: React.FC<CheckoutPageProps> = ({ cart, addresses, onPlaceOrder, openAddressModal, translations, showToast, isSubscriptionCheckout, subscriptionSelection }) => {
+    const [selectedAddress, setSelectedAddress] = useState<string>(addresses[0]?.id.toString() || '');
+    const [paymentMethod, setPaymentMethod] = useState(isSubscriptionCheckout ? 'card' : 'cod');
+    const [deliveryDay, setDeliveryDay] = useState('sunday');
+
+    useEffect(() => {
+        if (!selectedAddress && addresses.length > 0) {
+            setSelectedAddress(addresses[0].id.toString());
+        }
+    }, [addresses, selectedAddress]);
+
+    const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const deliveryFee = isSubscriptionCheckout ? 0 : 15; // Free delivery for subscriptions
+    const total = subtotal + deliveryFee;
+
+    const handlePlaceOrderClick = () => {
+        if (!selectedAddress) {
+            showToast(translations.checkout_no_address_toast, true);
+            return;
+        }
+        onPlaceOrder({
+            items: isSubscriptionCheckout ? subscriptionSelection : cart,
+            total: total,
+            deliveryDay: isSubscriptionCheckout ? deliveryDay : undefined
+        });
+    };
+
+    const weekDays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    
+    return (
+        <div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{translations.checkout_title}</h1>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-md">
+                    <form className="space-y-6">
+                        <div>
+                            <div className="flex justify-between items-center mb-4">
+                                <h2 className="text-xl font-semibold">{translations.shipping_address}</h2>
+                                <button type="button" onClick={openAddressModal} className="text-sm text-green-600 hover:underline">{translations.checkout_add_address_btn}</button>
+                            </div>
+                            <select 
+                                value={selectedAddress} 
+                                onChange={(e) => setSelectedAddress(e.target.value)} 
+                                className="w-full p-3 border rounded-md" 
+                                required
+                                disabled={addresses.length === 0}
+                            >
+                                {addresses.length === 0 ? (
+                                    <option value="">{translations.checkout_no_address}</option>
+                                ) : (
+                                    addresses.map(addr => (
+                                        <option key={addr.id} value={addr.id}>
+                                            {`${addr.name} - ${addr.address}, ${addr.city}`}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
+                        </div>
+
+                        {isSubscriptionCheckout ? (
+                             <div>
+                                <h2 className="text-xl font-semibold pt-4 mb-4">{translations.select_delivery_day}</h2>
+                                <div className="flex flex-wrap gap-4">
+                                    {weekDays.map(day => (
+                                        <label key={day} className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                            <input type="radio" name="delivery-day" value={day} checked={deliveryDay === day} onChange={(e) => setDeliveryDay(e.target.value)} className="mr-2" /> 
+                                            {translations[`day_${day}`]}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : (
+                            <div>
+                                <h2 className="text-xl font-semibold pt-4 mb-4">{translations.delivery_slot}</h2>
+                                <div className="flex flex-wrap gap-4">
+                                    <label className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                        <input type="radio" name="delivery-slot" value="15min" className="mr-2" /> {translations.slot_15min}
+                                    </label>
+                                    <label className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                        <input type="radio" name="delivery-slot" value="morning" className="mr-2" defaultChecked /> {translations.slot_morning}
+                                    </label>
+                                    <label className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                        <input type="radio" name="delivery-slot" value="afternoon" className="mr-2" /> {translations.slot_afternoon}
+                                    </label>
+                                    <label className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                        <input type="radio" name="delivery-slot" value="evening" className="mr-2" /> {translations.slot_evening}
+                                    </label>
+                                </div>
+                            </div>
+                        )}
+
+                        <div>
+                            <h2 className="text-xl font-semibold pt-4 mb-4">{translations.payment_method}</h2>
+                            <div className="space-y-3">
+                                {!isSubscriptionCheckout && (
+                                    <label className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                        <input type="radio" name="payment-method" value="cod" className="mr-2" checked={paymentMethod === 'cod'} onChange={e => setPaymentMethod(e.target.value)} /> {translations.payment_cod}
+                                    </label>
+                                )}
+                                <label className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                    <input type="radio" name="payment-method" value="upi" className="mr-2" checked={paymentMethod === 'upi'} onChange={e => setPaymentMethod(e.target.value)} /> {translations.payment_upi}
+                                </label>
+                                <label className="flex items-center p-3 border rounded-md cursor-pointer has-[:checked]:bg-green-100 has-[:checked]:border-green-500">
+                                    <input type="radio" name="payment-method" value="card" className="mr-2" checked={paymentMethod === 'card'} onChange={e => setPaymentMethod(e.target.value)} /> {translations.payment_card}
+                                </label>
+                            </div>
+                            <div className={`mt-4 space-y-2 ${paymentMethod === 'upi' ? 'block' : 'hidden'}`}>
+                                <input type="text" placeholder={translations.payment_upi_placeholder} className="w-full p-3 border rounded-md" />
+                            </div>
+                            <div className={`mt-4 space-y-2 ${paymentMethod === 'card' ? 'block' : 'hidden'}`}>
+                                <input type="text" placeholder={translations.payment_card_number_placeholder} className="w-full p-3 border rounded-md" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <input type="text" placeholder={translations.payment_card_expiry_placeholder} className="w-full p-3 border rounded-md" />
+                                    <input type="text" placeholder={translations.payment_card_cvv_placeholder} className="w-full p-3 border rounded-md" />
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <div className="lg:col-span-1 bg-white p-6 rounded-lg shadow-md h-fit">
+                    <h2 className="text-xl font-semibold mb-4">{translations.order_summary}</h2>
+                    {isSubscriptionCheckout ? (
+                         <>
+                            <div className="flex justify-between text-sm font-semibold">
+                                <span>{cart[0]?.name}</span>
+                                <span>₹{subtotal.toFixed(2)}</span>
+                            </div>
+                            <div className="mt-2 pt-2 border-t">
+                                <h3 className="text-sm font-semibold mb-1">{translations.your_custom_selections}:</h3>
+                                <div className="space-y-1 text-xs text-gray-600">
+                                     {subscriptionSelection.map(item => (
+                                        <div key={item.id} className="flex justify-between">
+                                            <span>{item.names[translations.lang_code as keyof typeof item.names] || item.name}</span>
+                                            <span>x{item.quantity} {item.unit === 'kg' ? 'kg' : ''}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                         </>
+                    ) : (
+                        <div className="space-y-2 mb-4">
+                            {cart.map(item => (
+                                <div key={item.id} className="flex justify-between text-sm">
+                                    <span>{item.names[translations.lang_code as keyof typeof item.names] || item.name} (x{item.quantity})</span>
+                                    <span>₹{(item.price * item.quantity).toFixed(2)}</span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                    <div className="border-t pt-4 space-y-2 mt-4">
+                         <div className="flex justify-between font-semibold">
+                            <span>{translations.summary_subtotal}</span>
+                            <span>₹{subtotal.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-gray-600">
+                            <span>{translations.summary_delivery}</span>
+                            <span>{deliveryFee > 0 ? `₹${deliveryFee.toFixed(2)}` : 'FREE'}</span>
+                        </div>
+                        <div className="flex justify-between text-xl font-bold mt-2">
+                            <span>{translations.summary_total}</span>
+                            <span>₹{total.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <button onClick={handlePlaceOrderClick} className="w-full mt-6 bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition">
+                        {translations.place_order_btn}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default CheckoutPage;
+
+
+# ===== FILE: /components/BottomNav.tsx =====
+
+
+import React from 'react';
+
+interface BottomNavProps {
+    currentPage: string;
+    onNavigate: (page: any) => void;
+    translations: Record<string, string>;
+}
+
+// FIX: Changed icon type from `JSX.Element` to `React.ReactElement` to resolve JSX namespace error.
+const NavLink: React.FC<{ href: string; currentPage: string; onNavigate: (page: any) => void; icon: React.ReactElement; label: string }> = ({ href, currentPage, onNavigate, icon, label }) => (
+    <a 
+        href={href} 
+        onClick={(e) => { e.preventDefault(); onNavigate(href); }}
+        className={`flex flex-col items-center justify-center w-1/5 pt-1 transition-colors ${currentPage === href ? 'text-green-600' : 'text-gray-600 hover:text-green-600'}`}
+    >
+        {icon}
+        <span className="text-xs font-medium">{label}</span>
+    </a>
+);
+
+const BottomNav: React.FC<BottomNavProps> = ({ currentPage, onNavigate, translations }) => {
+    return (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t shadow-[0_-1px_3px_rgba(0,0,0,0.1)] z-50">
+            <div className="flex justify-around items-center h-16">
+                <NavLink 
+                    href="#buyer-page" 
+                    currentPage={currentPage} 
+                    onNavigate={onNavigate}
+                    label={translations.bottom_nav_shop}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>}
+                />
+                <NavLink 
+                    href="#rewards-page" 
+                    currentPage={currentPage} 
+                    onNavigate={onNavigate}
+                    label={translations.bottom_nav_rewards}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="currentColor" viewBox="0 0 24 24"><path d="M12,2C6.486,2,2,6.486,2,12s4.486,10,10,10s10-4.486,10-10S17.514,2,12,2z M12,20c-4.411,0-8-3.589-8-8s3.589-8,8-8 s8,3.589,8,8S16.411,20,12,20z"></path><path d="M12,6c-3.309,0-6,2.691-6,6s2.691,6,6,6s6-2.691,6-6S9.309,6,12,6z M12,16c-2.206,0-4-1.794-4-4s1.794-4,4-4 s4,1.794,4,4S14.206,16,12,16z"></path></svg>}
+                />
+                <NavLink 
+                    href="#premium-page" 
+                    currentPage={currentPage} 
+                    onNavigate={onNavigate}
+                    label={translations.bottom_nav_premium}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5l5.5 5L12 4l3.5 6L21 5l-2 11H5zm14 3c0 .55-.45 1-1 1H6c-.55 0-1-.45-1-1v-1h14v1z"></path></svg>}
+                />
+                <NavLink 
+                    href="#my-orders-page" 
+                    currentPage={currentPage} 
+                    onNavigate={onNavigate}
+                    label={translations.bottom_nav_orders}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>}
+                />
+                 <NavLink 
+                    href="#me-page" 
+                    currentPage={currentPage} 
+                    onNavigate={onNavigate}
+                    label={translations.bottom_nav_me}
+                    icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>}
+                />
+            </div>
+        </div>
+    );
+};
+
+export default BottomNav;
+
+
+# ===== FILE: /components/RewardsPage.tsx =====
+
+
+import React from 'react';
+
+interface RewardsPageProps {
+    translations: Record<string, string>;
+}
+
+const RewardsPage: React.FC<RewardsPageProps> = ({ translations }) => {
+    // This is a placeholder. In a real app, this data would come from state/props.
+    const farmfuraCoins = 100;
+    const coinRewards = [
+        { id: 1, description: "50% off delivery fee", cost: 50, active: true },
+        { id: 2, description: "10% off total order", cost: 150, active: true },
+        { id: 3, description: "Free 1kg of Onions", cost: 80, active: true },
+    ];
+    const redeemedRewards: number[] = [];
+
+    return (
+        <>
+            <div className="text-center mb-8">
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">{translations.rewards_title}</h1>
+                <p className="text-gray-600 max-w-2xl mx-auto">{translations.rewards_subtitle}</p>
+            </div>
+            <div className="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mb-8">
+                <div className="flex justify-between items-center">
+                    <span className="text-lg font-semibold text-gray-700">{translations.your_balance}</span>
+                    <span className="text-2xl font-bold text-yellow-600 flex items-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6 mr-2"><path d="M12,2C6.486,2,2,6.486,2,12s4.486,10,10,10s10-4.486,10-10S17.514,2,12,2z M12,20c-4.411,0-8-3.589-8-8s3.589-8,8-8 s8,3.589,8,8S16.411,20,12,20z"></path><path d="M12,6c-3.309,0-6,2.691-6,6s2.691,6,6,6s6-2.691,6-6S9.309,6,12,6z M12,16c-2.206,0-4-1.794-4-4s1.794-4,4-4 s4,1.794,4,4S14.206,16,12,16z"></path></svg>
+                        {farmfuraCoins}
+                    </span>
+                </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {coinRewards.filter(r => r.active).map(reward => (
+                    <div key={reward.id} className="bg-white rounded-lg shadow-md p-6 flex flex-col justify-between">
+                        <div>
+                            <p className="font-bold text-lg text-gray-800">{reward.description}</p>
+                            <p className="text-indigo-600 font-bold mt-2">{reward.cost} Coins</p>
+                        </div>
+                        <button 
+                            className="mt-4 w-full bg-indigo-600 text-white font-bold py-2 rounded-md hover:bg-indigo-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed" 
+                            disabled={farmfuraCoins < reward.cost || redeemedRewards.includes(reward.id)}
+                        >
+                            {redeemedRewards.includes(reward.id) ? translations.reward_redeemed : translations.redeem_btn}
+                        </button>
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+};
+
+export default RewardsPage;
+
+
+
+# ===== FILE: /components/PremiumPage.tsx =====
+
+import React from 'react';
+import { SubscriptionPlan } from '../types';
+import { SUBSCRIPTION_PLANS } from '../constants';
+
+interface PremiumPageProps {
+    translations: Record<string, string>;
+    onSelectPlan: (plan: SubscriptionPlan) => void;
+}
+
+const PremiumPage: React.FC<PremiumPageProps> = ({ translations, onSelectPlan }) => {
+    const starterPlan = SUBSCRIPTION_PLANS[0];
+    const familyPlan = SUBSCRIPTION_PLANS[1];
+
+    return (
+        <div>
+            <div className="text-center mb-10">
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 mb-2">{translations.premium_title}</h1>
+                <p className="text-gray-600 max-w-2xl mx-auto">{translations.premium_subtitle}</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+                <div className="bg-white rounded-lg shadow-lg p-8 transform hover:-translate-y-2 transition-transform duration-300">
+                    <h3 className="text-2xl font-bold text-center text-gray-800 mb-4">{translations.starter_pack_title}</h3>
+                    <p className="text-4xl font-bold text-center text-green-600 mb-6">₹{starterPlan.price}<span className="text-lg font-normal text-gray-500">{translations.per_week}</span></p>
+                    <ul className="space-y-3 text-gray-600 mb-8">
+                        <li className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>{translations.starter_pack_f1}</li>
+                        <li className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>{translations.starter_pack_f2}</li>
+                    </ul>
+                    <button onClick={() => onSelectPlan(starterPlan)} className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition">{translations.subscribe_btn}</button>
+                </div>
+                <div className="bg-white rounded-lg shadow-lg p-8 transform hover:-translate-y-2 transition-transform duration-300 border-4 border-green-600 relative">
+                    <div className="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2 bg-green-600 text-white text-sm font-bold px-4 py-1 rounded-full">{translations.popular_tag}</div>
+                    <h3 className="text-2xl font-bold text-center text-gray-800 mb-4">{translations.family_pack_title}</h3>
+                    <p className="text-4xl font-bold text-center text-green-600 mb-6">₹{familyPlan.price}<span className="text-lg font-normal text-gray-500">{translations.per_week}</span></p>
+                    <ul className="space-y-3 text-gray-600 mb-8">
+                       <li className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>{translations.family_pack_f1}</li>
+                       <li className="flex items-center"><svg className="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>{translations.family_pack_f2}</li>
+                    </ul>
+                    <button onClick={() => onSelectPlan(familyPlan)} className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition">{translations.subscribe_btn}</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default PremiumPage;
+
+
+# ===== FILE: /components/MyOrdersPage.tsx =====
+
+
+import React from 'react';
+import { Order } from '../types';
+
+interface MyOrdersPageProps {
+    orders: Order[];
+    translations: Record<string, string>;
+    onChat: () => void;
+}
+
+const MyOrdersPage: React.FC<MyOrdersPageProps> = ({ orders, translations, onChat }) => {
+    return (
+        <div className="max-w-4xl mx-auto">
+            <h1 className="text-3xl font-bold text-gray-800 mb-6">{translations.my_orders_title}</h1>
+            <div className="space-y-4">
+                {orders.length === 0 ? (
+                    <p className="text-center text-gray-500">{translations.no_orders}</p>
+                ) : (
+                    orders.map(order => (
+                        <div key={order.id} className="bg-white p-4 rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center">
+                            <div className="mb-2 sm:mb-0">
+                                <p className="font-bold text-lg text-gray-800">{translations.order_id}: {order.id}</p>
+                                <p className="text-sm text-gray-600">{translations.order_date}: {new Date(order.timestamp).toLocaleDateString()}</p>
+                                <p className="text-sm text-gray-500 mt-1">{translations.order_items}: {order.items.map(item => `${item.name} (x${item.quantity})`).join(', ')}</p>
+                            </div>
+                            <div className="flex items-center space-x-4">
+                                <span className="text-xl font-bold text-green-700">₹{order.total.toFixed(2)}</span>
+                                <span className="text-sm px-3 py-1 rounded-full bg-yellow-100 text-yellow-800">{order.status}</span>
+                                <button onClick={onChat} className="bg-blue-500 text-white px-3 py-1 rounded-md text-sm">{translations.chat_btn}</button>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+        </div>
+    );
+};
+
+export default MyOrdersPage;
+
+
+
+# ===== FILE: /components/MePage.tsx =====
+
+
+import React from 'react';
+import { User, Address } from '../types';
+
+interface MePageProps {
+    user: User;
+    addresses: Address[];
+    translations: Record<string, string>;
+}
+
+const MePage: React.FC<MePageProps> = ({ user, addresses, translations }) => {
+    return (
+        <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md">
+            <h1 className="text-3xl font-bold text-gray-800 mb-6 text-center">{translations.me_page_title}</h1>
+            <div className="space-y-4">
+                <div className="flex items-center p-4 border rounded-lg mb-4">
+                    <span className="text-xl mr-4">👤</span>
+                    <div>
+                        <p className="text-sm text-gray-500">{translations.me_name_label}</p>
+                        <p className="font-semibold">{user.name}</p>
+                    </div>
+                </div>
+                <div className="flex items-center p-4 border rounded-lg mb-6">
+                     <span className="text-xl mr-4">📞</span>
+                    <div>
+                        <p className="text-sm text-gray-500">{translations.me_phone_label}</p>
+                        <p className="font-semibold">{user.loginCredential}</p>
+                    </div>
+                </div>
+                
+                <h2 className="text-xl font-semibold text-gray-800 mb-4">{translations.me_saved_addresses_title}</h2>
+                <div className="space-y-3">
+                    {addresses.length > 0 ? (
+                        addresses.map(addr => (
+                            <div key={addr.id} className="p-4 border rounded-lg bg-gray-50">
+                                <p className="font-semibold">{addr.name}</p>
+                                <p className="text-sm text-gray-600">{addr.address}</p>
+                                <p className="text-sm text-gray-600">{addr.city}, {addr.pin}</p>
+                            </div>
+                        ))
+                    ) : (
+                        <p className="text-gray-500 text-center">{translations.me_no_saved_addresses}</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default MePage;
+
+
+
+# ===== FILE: /components/OrderStatusPage.tsx =====
+
+
+import React, { useState, useEffect } from 'react';
+
+interface OrderStatusPageProps {
+    onBackToShop: () => void;
+    onChat: () => void;
+    translations: Record<string, string>;
+}
+
+const OrderStatusPage: React.FC<OrderStatusPageProps> = ({ onBackToShop, onChat, translations }) => {
+    const [status, setStatus] = useState(0); // 0: Searching, 1: Accepted, 2: On the way, 3: Arrived
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setStatus(prevStatus => {
+                if (prevStatus >= 3) {
+                    clearInterval(interval);
+                    return 3;
+                }
+                return prevStatus + 1;
+            });
+        }, 5000);
+        return () => clearInterval(interval);
+    }, []);
+
+    const getStatusContent = () => {
+        switch (status) {
+            case 0:
+                return {
+                    icon: <svg className="w-16 h-16 mx-auto text-yellow-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>,
+                    text: translations.delivery_status_waiting,
+                    mapStatus: translations.map_loading
+                };
+            case 1:
+                return {
+                    icon: <svg className="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>,
+                    text: translations.delivery_status_accepted,
+                    mapStatus: translations.map_eta_10
+                };
+            case 2:
+                return {
+                    icon: <svg className="w-16 h-16 mx-auto text-blue-500 animate-pulse" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>,
+                    text: translations.delivery_status_on_the_way,
+                    mapStatus: translations.map_eta_5
+                };
+            case 3:
+                return {
+                    icon: <svg className="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>,
+                    text: translations.delivery_status_arrived,
+                    mapStatus: translations.map_arrived
+                };
+            default: return { icon: null, text: '', mapStatus: '' };
+        }
+    };
+
+    const { icon, text, mapStatus } = getStatusContent();
+
+    return (
+        <div className="max-w-2xl mx-auto bg-white p-8 rounded-lg shadow-md text-center">
+            <div className="mb-4">{icon}</div>
+            <h1 className="text-3xl font-bold text-gray-800 mb-2">{translations.delivery_status_title}</h1>
+            <p className="text-gray-600 mb-6">{text}</p>
+            
+            <div className={`bg-gray-100 p-4 rounded-lg shadow-inner space-y-4 ${status > 0 ? 'block' : 'hidden'}`}>
+                <div className="flex items-center space-x-4">
+                    <img src="https://picsum.photos/80/80" alt="Carrier Vehicle" className="rounded-full w-16 h-16" />
+                    <div className="text-left flex-grow">
+                        <h3 className="font-bold text-lg text-green-800 flex items-center">
+                            Ravi M.
+                            <span className="ml-2 text-sm font-normal text-yellow-500 flex items-center">
+                                4.9 <svg className="w-4 h-4 ml-1" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+                            </span>
+                        </h3>
+                        <p className="text-xs text-gray-500">{translations.carrier_vehicle_label} TVS Jupiter</p>
+                    </div>
+                </div>
+                <div className="relative">
+                    <img src="https://i.imgur.com/g1p4e1e.png" alt="Live Map" className="w-full h-48 object-cover rounded-md shadow-sm" />
+                    <div className="absolute top-2 left-2 bg-white text-xs font-semibold px-2 py-1 rounded-full shadow-md">{mapStatus}</div>
+                </div>
+                <button onClick={onChat} className="w-full bg-blue-500 text-white font-bold py-2 rounded-md hover:bg-blue-600 transition">
+                    {translations.chat_with_carrier_btn}
+                </button>
+            </div>
+            
+            <button onClick={onBackToShop} className="mt-8 bg-green-600 text-white font-bold py-3 px-8 rounded-md hover:bg-green-700 transition">
+                {translations.continue_shopping_btn}
+            </button>
+        </div>
+    );
+};
+
+export default OrderStatusPage;
+
+
+
+# ===== FILE: /components/AddressModal.tsx =====
+
+
+import React, { useState } from 'react';
+import { Address } from '../types';
+
+interface AddressModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (address: Address) => void;
+    translations: Record<string, string>;
+    showToast: (message: string, isError?: boolean) => void;
+}
+
+const AddressModal: React.FC<AddressModalProps> = ({ isOpen, onClose, onSave, translations, showToast }) => {
+    const [name, setName] = useState('');
+    const [address, setAddress] = useState('');
+    const [city, setCity] = useState('');
+    const [pin, setPin] = useState('');
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!name.trim()) {
+            showToast(translations.form_field_required.replace('{fieldName}', 'Full Name'), true);
+            return;
+        }
+        if (!address.trim()) {
+            showToast(translations.form_field_required.replace('{fieldName}', 'Address'), true);
+            return;
+        }
+        if (!city.trim()) {
+            showToast(translations.form_field_required.replace('{fieldName}', 'City'), true);
+            return;
+        }
+        if (!pin.trim()) {
+            showToast(translations.form_field_required.replace('{fieldName}', 'Pin Code'), true);
+            return;
+        }
+        onSave({ id: Date.now(), name, address, city, pin });
+        setName(''); setAddress(''); setCity(''); setPin('');
+    };
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-[110]">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-bold text-gray-800">{translations.address_modal_title}</h2>
+                    <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-2xl font-bold">&times;</button>
+                </div>
+                <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                    <input type="text" value={name} onChange={e => setName(e.target.value)} placeholder={translations.address_modal_name_placeholder} className="w-full p-3 border rounded-md" required />
+                    <input type="text" value={address} onChange={e => setAddress(e.target.value)} placeholder={translations.address_modal_address_placeholder} className="w-full p-3 border rounded-md" required />
+                    <input type="text" value={city} onChange={e => setCity(e.target.value)} placeholder={translations.address_modal_city_placeholder} className="w-full p-3 border rounded-md" required />
+                    <input type="text" value={pin} onChange={e => setPin(e.target.value)} placeholder={translations.address_modal_pin_placeholder} className="w-full p-3 border rounded-md" required />
+                    <button type="submit" className="w-full bg-green-600 text-white font-bold py-3 rounded-md hover:bg-green-700 transition">{translations.address_modal_save_btn}</button>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+export default AddressModal;
+
+
+
+# ===== FILE: /components/ChatModal.tsx =====
+
+
+import React from 'react';
+
+interface ChatModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    translations: Record<string, string>;
+}
+
+const ChatModal: React.FC<ChatModalProps> = ({ isOpen, onClose, translations }) => {
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center p-4 z-[110]">
+            <div className="bg-white rounded-lg shadow-2xl w-full max-w-md flex flex-col">
+                <div className="flex justify-between items-center p-4 border-b">
+                    <h2 className="text-lg font-bold text-gray-800">{translations.chat_modal_title}</h2>
+                    <button onClick={onClose} className="text-gray-600 hover:text-gray-900 text-2xl font-bold">&times;</button>
+                </div>
+                <div className="p-4 flex-grow overflow-y-auto h-64">
+                    <div className="space-y-4">
+                        <div className="flex items-start">
+                            <img src="https://picsum.photos/80/80" alt="Carrier Avatar" className="rounded-full mr-2 w-8 h-8" />
+                            <div className="bg-gray-200 rounded-xl p-3 max-w-xs text-sm">
+                                <p>{translations.chat_modal_default_msg}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div className="p-4 border-t flex">
+                    <input type="text" placeholder={translations.chat_modal_input_placeholder} className="flex-grow p-2 border rounded-md focus:outline-none" />
+                    <button className="ml-2 bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 transition">{translations.chat_modal_send_btn}</button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default ChatModal;
+
+
+
+# ===== FILE: /components/Toast.tsx =====
+
+
+import React, { useEffect, useState } from 'react';
+
+interface ToastProps {
+    message: string;
+    isError?: boolean;
+}
+
+const Toast: React.FC<ToastProps> = ({ message, isError = false }) => {
+    const [visible, setVisible] = useState(false);
+
+    useEffect(() => {
+        if (message) {
+            setVisible(true);
+            const timer = setTimeout(() => {
+                setVisible(false);
+            }, 2700); // A bit shorter than the timeout in App.tsx to allow for fade-out
+            return () => clearTimeout(timer);
+        }
+    }, [message]);
+
+    if (!message) return null;
+
+    return (
+        <div 
+            className={`fixed bottom-20 left-1/2 -translate-x-1/2 p-4 rounded-lg shadow-xl text-white transition-opacity duration-300 z-[101] ${isError ? 'bg-red-600' : 'bg-green-600'} ${visible ? 'opacity-100' : 'opacity-0'}`}
+        >
+            {message}
+        </div>
+    );
+};
+
+export default Toast;
+
+
+
+# ===== FILE: /components/SubscriptionSelectionPage.tsx =====
+
+import React, { useState } from 'react';
+import { SubscriptionPlan, Product, CartItem } from '../types';
+
+interface SubscriptionSelectionPageProps {
+    plan: SubscriptionPlan;
+    products: Product[];
+    onConfirmSelection: (selectedItems: CartItem[]) => void;
+    translations: Record<string, string>;
+    showToast: (message: string, isError?: boolean) => void;
+}
+
+const SubscriptionSelectionPage: React.FC<SubscriptionSelectionPageProps> = ({ plan, products, onConfirmSelection, translations, showToast }) => {
+    const [selectedItems, setSelectedItems] = useState<CartItem[]>([]);
+    
+    const availableProducts = products.filter(p => p.category === 'vegetables' || p.category === 'fruits');
+
+    const getItemWeight = (item: Product, quantity: number): number => {
+        switch(item.unit) {
+            case 'kg': return quantity;
+            case 'bundle': return quantity * 0.25; // Assumption: a bundle is 250g
+            case 'piece': return quantity * 0.15; // Assumption: a piece is 150g
+            case 'pack': return quantity * 0.2; // Assumption: a pack is 200g
+            default: return 0;
+        }
+    }
+    
+    const totalWeight = selectedItems.reduce((sum, item) => sum + getItemWeight(item, item.quantity), 0);
+
+    const handleQuantityChange = (product: Product, newQuantity: number) => {
+        const currentItem = selectedItems.find(item => item.id === product.id);
+        const otherItemsWeight = totalWeight - (currentItem ? getItemWeight(currentItem, currentItem.quantity) : 0);
+        const newItemWeight = getItemWeight(product, newQuantity);
+
+        if (otherItemsWeight + newItemWeight > plan.maxWeight) {
+            showToast(`Cannot exceed max weight of ${plan.maxWeight}kg`, true);
+            return;
+        }
+
+        setSelectedItems(prevItems => {
+            if (newQuantity <= 0) {
+                return prevItems.filter(item => item.id !== product.id);
+            }
+            const existingItem = prevItems.find(item => item.id === product.id);
+            if (existingItem) {
+                return prevItems.map(item => item.id === product.id ? { ...item, quantity: newQuantity } : item);
+            }
+            return [...prevItems, { ...product, quantity: newQuantity }];
+        });
+    };
+
+    return (
+        <div>
+            <div className="text-center mb-6">
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">{translations.subscription_selection_title}</h1>
+                <p className="text-gray-600">{translations.subscription_selection_subtitle.replace('{planName}', plan.name)}</p>
+            </div>
+
+            <div className="sticky top-[80px] bg-white/80 backdrop-blur-sm p-4 rounded-lg shadow-md mb-6 z-10 flex justify-between items-center">
+                <h2 className="text-lg font-semibold">{plan.name}</h2>
+                <div className="text-right">
+                    <div className="font-bold text-lg">{translations.current_weight}: <span className={totalWeight > plan.maxWeight ? 'text-red-500' : 'text-green-600'}>{totalWeight.toFixed(2)}kg</span></div>
+                    <div className="text-sm text-gray-500">{translations.max_weight}: {plan.maxWeight}kg</div>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {availableProducts.map(product => {
+                    const currentItem = selectedItems.find(item => item.id === product.id);
+                    const quantity = currentItem ? currentItem.quantity : 0;
+                    const isKg = product.unit === 'kg';
+                    const step = isKg ? 0.25 : 1;
+
+                    return (
+                        <div key={product.id} className="bg-white p-4 rounded-lg shadow-sm text-center">
+                            <img src={product.image} alt={product.name} className="w-full h-24 object-cover rounded-md mb-2" />
+                            <h3 className="text-sm font-semibold h-10">{product.names[translations.lang_code as keyof typeof product.names] || product.name}</h3>
+                            <div className="flex items-center justify-center space-x-2 mt-2">
+                                <button onClick={() => handleQuantityChange(product, quantity - step)} className="h-8 w-8 rounded-full bg-gray-200 font-bold">-</button>
+                                <span className="w-12 text-center font-semibold">{quantity}{isKg && 'kg'}</span>
+                                <button onClick={() => handleQuantityChange(product, quantity + step)} className="h-8 w-8 rounded-full bg-gray-200 font-bold">+</button>
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+
+            <div className="mt-8 text-center">
+                <button 
+                    onClick={() => onConfirmSelection(selectedItems)}
+                    disabled={selectedItems.length === 0}
+                    className="bg-green-600 text-white font-bold py-3 px-8 rounded-md hover:bg-green-700 transition disabled:bg-gray-400"
+                >
+                    {translations.confirm_and_checkout}
+                </button>
+            </div>
+        </div>
+    );
+};
+
+export default SubscriptionSelectionPage;

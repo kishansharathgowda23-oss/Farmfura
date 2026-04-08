@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fresher Activation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-800 flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 rounded-xl shadow-2xl text-center max-w-sm w-full">
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Farmfura Onboarding</h1>
+        <p class="text-gray-600 mb-6">Scan this QR Code to begin your on-site tasks.</p>
+        <div class="p-4 bg-white inline-block rounded-lg border">
+            <img id="qr-code-img" src="" alt="Fresher Activation QR Code">
+        </div>
+        <p class="mt-6 text-sm text-gray-500">For demonstration, click the link below:</p>
+        <a id="qr-code-link" href="" class="mt-2 block text-blue-600 hover:underline">Simulate Scan & Begin Activation</a>
+    </div>
+
+<script>
+    const link = window.location.href.replace('fresher-qr.html', 'Employee.html?flow=activate');
+    document.getElementById('qr-code-link').href = link;
+    document.getElementById('qr-code-img').src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(link)}`;
+</script>
+</body>
+</html>
